@@ -1,0 +1,2 @@
+var x = "this is a string"
+var y = "this is an unterminated string
