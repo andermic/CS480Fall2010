@@ -1,10 +1,10 @@
 //
 //		Compiler for CS 480
-//	class Lexer
+//		Class Lexer
 //
 //		Written by Tim Budd, Winter term 2006
 //
-//		modified by: 
+//		Modified by: Mike Anderson, Sam Heinith, and Rob Mcguire-Dale 
 //
 
 import java.io.*;
@@ -17,49 +17,80 @@ public class Lexer {
 	private PushbackReader input;
 	private String token;
 	private int tokenType;
-	private String[] keywords = {"not","new","and","or","while","if","return","begin","end","function","class","const","type","var","else"};
+	private String[] keywords = {"not","new","and","or","while","if","return","begin","end",
+	 "function","class","const","type","var","else"};
+	final int EOF_RETURN = 65535; // To fix a Java glitch, read() returns 65535 on eof if
+								  //  ints are longer than 16 bits.
 	                          
 
 	public Lexer(Reader in) {
 		input = new PushbackReader(in);
 	}
 
-	private void skipWhiteSpace() throws ParseException, IOException {
-		// your code here
-		int currentChar = -1;
-		do{ 
-			currentChar = input.read();
+	private void skipComments() throws ParseException, IOException {
+		while(true) {
+			int firstChar = 0, middleChar = 0;
+			skipWhiteSpace();
 			
+			try { 
+				firstChar = input.read();
+			} catch (IOException e) { throw new ParseException(0); }
+
+			if( (char)firstChar != '{' ){
+				try { 
+					input.unread(firstChar);
+				} catch (IOException e) { throw new ParseException(0); }
+				break;
+			}
+			
+			do {
+				try { 
+					middleChar = input.read();
+				} catch (IOException e) { throw new ParseException(0); }
+				if( (char)middleChar == '{' || middleChar == -1 || middleChar == EOF_RETURN ) {
+					throw new ParseException(1);
+				}
+			} while( (char)middleChar != '}' );
+		}
+	}
+	
+	private void skipWhiteSpace() throws ParseException, IOException {
+		int currentChar = -1;
+		do { 
+			try { 
+				currentChar = input.read();
+			} catch (IOException e) { throw new ParseException(0); }
 		} while(Character.isWhitespace((char) currentChar));
-		input.unread(currentChar);
+		try { 
+			input.unread(currentChar);
+		} catch (IOException e2) { throw new ParseException(0); }
 		return;		
-		
 	}
 	
 	public void nextLex() throws ParseException, IOException {
-		try {
-			skipWhiteSpace();
-		} catch (IOException e) { throw new ParseException(0); }
 		token = "";
 		char currentChar;
 		int currentCharAsInt;
+
+		skipComments();
+		skipWhiteSpace();
 
 		try {
 			 currentCharAsInt = input.read();
 		} catch (IOException e1) { throw new ParseException(0); }
 		
 		currentChar = (char) currentCharAsInt;
-		//String one = Integer.toBinaryString(currentCharAsInt);
-		//String two = Integer.toBinaryString(-1);
-		if(currentCharAsInt == 65535){  //wtf
+		if( currentCharAsInt == -1 || currentCharAsInt == EOF_RETURN ){
 			tokenType = endOfInput;
 		}		
 		
-		else if(Character.isDigit(currentChar)){
+		else if(Character.isDigit(currentChar)) {
 			tokenType = intToken; //by default
 			token = token + currentChar;
 			while(true){
-				currentChar = (char) input.read();
+				try {
+					currentChar = (char) input.read();
+				} catch (IOException e) { throw new ParseException(0); }
 				if(Character.isDigit(currentChar)){
 					token = token + currentChar;
 				}
@@ -68,20 +99,27 @@ public class Lexer {
 						tokenType = realToken;
 						token = token + currentChar;
 					} else {
-						input.unread(currentChar);
+						try {
+							input.unread(currentChar);
+						} catch (IOException e) { throw new ParseException(0); }
 						break;
 					}
 				}
 				else {
-					input.unread(currentChar);
+					try {
+						input.unread(currentChar);
+					} catch (IOException e) { throw new ParseException(0); }
 					break;
 				}				
 			}			
 		}		
-		else if(Character.isLetter(currentChar)){ 		
+
+		else if(Character.isLetter(currentChar)) { 		
 			token = token + currentChar;
 			while(true){
-				currentChar = (char) input.read();
+				try {
+					currentChar = (char) input.read();
+				} catch (IOException e) { throw new ParseException(0); }
 				if(Character.isLetterOrDigit(currentChar)){
 					token = token + currentChar;
 				}
@@ -89,7 +127,7 @@ public class Lexer {
 					input.unread(currentChar);
 					tokenType = identifierToken;
 					for(String current: keywords){
-						if(token.equals(current)){
+						if(match(current)){
 							tokenType = keywordToken;
 							break;
 						}
@@ -98,11 +136,28 @@ public class Lexer {
 				}
 			}
 		}		
-		else{
-			switch (currentChar){  
+		
+		else {
+			switch(currentChar) {
+			case '"':
+				tokenType = stringToken;
+					while(true) {
+						try {
+							currentCharAsInt = input.read();
+							currentChar = (char) currentCharAsInt;
+						} catch (IOException e) { throw new ParseException(0); }
+						if( currentCharAsInt == -1 || currentCharAsInt == EOF_RETURN ) {
+							throw new ParseException(2);
+						}
+						else if( currentChar == '"') {
+							break;
+						}
+						token = token + currentChar;
+					} 
+				break;
 				
 			case '<':
-				tokenType = stringToken;
+				tokenType = otherToken;
 				token = token + currentChar;
 				char secondChar = (char) input.read();
 				if(secondChar == '<'){
@@ -111,27 +166,28 @@ public class Lexer {
 				}
 				else {
 					input.unread(secondChar);
-					}					
+				}					
+
 			case '>':				
 			case '=':			
 			case '!':
-				tokenType = stringToken;
-				if(currentChar != '<'){
-				token = token + currentChar;
+				tokenType = otherToken;
+				if(currentChar != '<') {
+					token = token + currentChar;
 				}
 				secondChar = (char) input.read();
-				if(secondChar == '='){
+				if(secondChar == '=') {
 					token = token + secondChar;
 					break;
 				}
 				else {
 					input.unread(secondChar);
-					}	
+					}
 				break;
 				
 			default:
 				token = Character.toString(currentChar);
-				tokenType = stringToken;		
+				tokenType = otherToken;		
 			}
 		}	
 		return;		

@@ -1,19 +1,19 @@
 { try all the operators }
 function main ()
-var PI = 3.1415926
+var PI = 3.1415926;
 begin
-	if (3<4) then
-		printInt(3+4)
-	if (3<=4) then
-		printInt(3-4)
-	if (3!=4) then
-		printInt(3*4)
-	if (3==4) then
-		printInt(3/4)
-	if (3>4) then
-		printInt(3%4)
-	while (3>=4) do
-		printInt(3<<4)
-	printReal(3*PI)
-	printStr("Apple pie")
-end
+	if (3<4) 
+		printInt(3+4);
+	if (3<=4) 
+		printInt(3-4);
+	if (3!=4) 
+		printInt(3*4);
+	if (3==4) 
+		printInt(3/4);
+	if (3>4) 
+		printInt(3%4);
+	while (3>=4) 
+		printInt(3<<4);
+	printReal(3*PI);
+	printStr("Apple pie");
+end;

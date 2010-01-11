@@ -1,16 +1,16 @@
 Reading file test1
 Token: Of category 1
 Token: course category 1
-Token: , category 5
+Token: , category 6
 Token: the category 1
 Token: Lexer category 1
 Token: doesn category 1
-Token: ' category 5
+Token: ' category 6
 Token: t category 1
 Token: know category 1
 Token: about category 1
 Token: syntax category 1
-Token: , category 5
+Token: , category 6
 Token: so category 1
 Token: even category 1
 Token: English category 1
@@ -19,4 +19,4 @@ Token: be category 1
 Token: converted category 1
 Token: into category 1
 Token: text category 1
-Token: . category 5
+Token: . category 6
