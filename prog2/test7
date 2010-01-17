@@ -1,0 +1,6 @@
+type x : +3;
+function main ()
+begin
+	printStr("won't get here");
+end
+

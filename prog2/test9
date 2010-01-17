@@ -1,0 +1,8 @@
+{ keywords cannot be used as tokens }
+function main ()
+begin
+	if (if == then) then then = else else else = if;
+	if (((a == 12) and (b <= 12) or not (c >= 12))) then
+		x = a(2*a << 3+-5);
+end;
+
