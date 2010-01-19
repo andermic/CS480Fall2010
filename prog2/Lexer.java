@@ -81,6 +81,7 @@ public class Lexer {
 		
 		currentChar = (char) currentCharAsInt;
 		if( currentCharAsInt == -1 || currentCharAsInt == EOF_RETURN ){
+			token = "<eof>";
 			tokenType = endOfInput;
 		}		
 		

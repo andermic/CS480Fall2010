@@ -14,7 +14,7 @@ class Asgn2 {
 			Parser par = new Parser(new Lexer(instream), true);
 			par.parse();
 		}
-			catch(ParseException e) 
+			catch(ParseException e)
 				{ System.out.println("Parse Error " + e); }
 			catch(FileNotFoundException e) 
 				{ System.err.println("File not found " + e); }
