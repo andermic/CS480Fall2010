@@ -9,7 +9,6 @@ import java.io.*;
 public class Parser {
 	private Lexer lex;
 	private boolean debug;
-	private int indent = 0;
 
 	public Parser (Lexer l, boolean d) { lex = l; debug = d; }
 
@@ -21,27 +20,11 @@ public class Parser {
 	}
 
 	private final void start (String n) {
-		if (debug) {
-			System.out.print(indent);
-			if(indent < 10) {
-				System.out.print(' ');
-			}
-			System.out.print(" - ");
-			System.out.println("start " + n + " token: " + lex.tokenText());
-			indent++;
-		}
+		if (debug) System.out.println("start " + n + " token: " + lex.tokenText());
 	}
 
 	private final void stop (String n) {
-		if (debug) {
-			indent--;
-			System.out.print(indent);
-			if(indent < 10) {
-				System.out.print(' ');
-			}
-			System.out.print(" - ");
-			System.out.println("recognized " + n + " token: " + lex.tokenText());
-		}
+		if (debug) System.out.println("recognized " + n + " token: " + lex.tokenText());
 	}
 
 	private void parseError(int number) throws ParseException {
@@ -69,11 +52,14 @@ public class Parser {
 		start("declaration");
 		
 		if (lex.match("class")) {
-			lex.nextLex();
 			classDeclaration();
 		}
-		else {
+		else if (lex.match("function") || lex.match("const") || 
+				 lex.match("var") || lex.match("type")) {
 			nonClassDeclaration();
+		}
+		else {
+			parseError(26);
 		}
 		
 		stop("declaration");
@@ -85,8 +71,11 @@ public class Parser {
 		if (lex.match("function")) {
 			functionDeclaration();
 		}
-		else {
+		else if (lex.match("const") || lex.match("var") || lex.match("type")) {
 			nonFunctionDeclaration();
+		}
+		else {
+			parseError(26);
 		}
 		
 		stop("nonClassDeclaration");
@@ -96,15 +85,12 @@ public class Parser {
 		start("nonFunctionDeclaration");
 		
 		if (lex.match("var")) {
-			lex.nextLex();
 			variableDeclaration();
 		}
 		else if (lex.match("const")){
-			lex.nextLex();
 			constantDeclaration();
 		}
 		else if (lex.match("type")){
-			lex.nextLex();
 			typeDeclaration();
 		}
 		else {
@@ -117,6 +103,7 @@ public class Parser {
 	private void constantDeclaration() throws ParseException, IOException {
 		start("constantDeclaration");
 		
+		lex.nextLex(); //Consume const
 		if (lex.tokenCategory() == Lexer.identifierToken) {
 			lex.nextLex();
 			if (lex.match("=")) {
@@ -144,8 +131,8 @@ public class Parser {
 	private void typeDeclaration() throws ParseException, IOException {
 		start("typeDeclaration");
 		
+		lex.nextLex(); //Consume type
 		if (lex.tokenCategory() == Lexer.identifierToken) {
-			lex.nextLex();
 			nameDeclaration();
 		}
 		else {
@@ -158,8 +145,8 @@ public class Parser {
 	private void variableDeclaration() throws ParseException, IOException {
 		start("variableDeclaration");
 		
+		lex.nextLex(); //Consume var
 		if (lex.tokenCategory() == Lexer.identifierToken) {
-			lex.nextLex();
 			nameDeclaration();
 		}
 		else {
@@ -172,7 +159,7 @@ public class Parser {
 	private void nameDeclaration() throws ParseException, IOException {
 		start("nameDeclaration");
 		
-		lex.nextLex();
+		lex.nextLex(); //Consume identifier
 		if (lex.match(":")) {
 			lex.nextLex();
 			type();
@@ -187,6 +174,7 @@ public class Parser {
 	private void classDeclaration () throws ParseException, IOException {
 		start("classDeclaration");
 		
+		lex.nextLex(); //Consume class
 		if (lex.tokenCategory() == Lexer.identifierToken) {
 			lex.nextLex();
 			classBody();
@@ -205,13 +193,14 @@ public class Parser {
 			lex.nextLex();
 			while (!lex.match("end")) {
 				nonClassDeclaration();
+				if (lex.match(";")) {
+					lex.nextLex();
+				}
+				else {
+					parseError(18);
+				}
 			}
-			if (lex.match("end")) {
-				lex.nextLex();
-			}
-			else {
-				parseError(8);
-			}
+			lex.nextLex(); //Consume end
 		}
 		else {
 			parseError(4);
@@ -262,22 +251,17 @@ public class Parser {
 		
 		if(lex.tokenCategory() == Lexer.identifierToken) {
 			nameDeclaration();
-			while(!lex.match(")")) {
-				if(lex.match(",")) {
-					lex.nextLex();
-					if(lex.tokenCategory() == Lexer.identifierToken) {
-						nameDeclaration();
-					}
-					else {
-						parseError(27);
-					}					
+			while(lex.match(",")) {
+				lex.nextLex();
+				if(lex.tokenCategory() == Lexer.identifierToken) {
+					nameDeclaration();
 				}
 				else {
-					parseError(47, "expecting comma");
-				}
+					parseError(27);
+				}					
 			}
 		}
-		else {} //Successfully match nothing
+		else {} // Successfully match nothing
 		
 		stop("argumentList");
 	}
@@ -344,7 +328,6 @@ public class Parser {
 		
 		while(!lex.match("begin")) {
 			nonClassDeclaration();
-			lex.nextLex();
 			if( lex.match(";")) {
 				lex.nextLex();
 			}
@@ -361,10 +344,13 @@ public class Parser {
 	private void compoundStatement () throws ParseException, IOException {
 		start("compoundStatement");
 		
+		lex.nextLex();
 		while(!lex.match("end")) {
-			lex.nextLex();
 			statement();
-			if(!lex.match(";")) {
+			if( lex.match(";")) {
+				lex.nextLex();
+			}
+			else {
 				parseError(18);
 			}
 		}
@@ -401,7 +387,7 @@ public class Parser {
 	private void returnStatement () throws ParseException, IOException {
 		start("returnStatement");
 		
-		lex.nextLex();
+		lex.nextLex(); //Consume return
 		if(lex.match("(")) {
 			lex.nextLex();
 			expression();
@@ -494,15 +480,13 @@ public class Parser {
 	private void parameterList () throws ParseException, IOException {
 		start("parameterList");
 		
-		if(lex.match(")")) {
-			lex.nextLex();
-		}
-		else {
-			while(true) {
-				expression();
-				if(!lex.match("'")) {
-					break;
-				}
+		while(true) {
+			expression();
+			if(!lex.match(",")) {
+				break;
+			}
+			else {
+				lex.nextLex();
 			}
 		}
 		
@@ -530,7 +514,8 @@ public class Parser {
 			lex.nextLex();
 			plusExpression();
 		}
-	
+		else {} //Successfully match nothing
+		
 		stop("relExpression");
 	}
 
@@ -603,7 +588,7 @@ public class Parser {
 			lex.nextLex();
 		}
 		else {
-			parseError(47, "expecting term");
+			parseError(33);
 		}
 		
 		stop("term");
@@ -612,7 +597,8 @@ public class Parser {
 	private void reference () throws ParseException, IOException {
 		start("reference");
 		
-		while(lex.tokenCategory() != Lexer.identifierToken) {
+		lex.nextLex(); //Consume identifier
+		while(lex.match("^") || lex.match(".") || lex.match("[")) {
 			if(lex.match("^")) {
 				lex.nextLex();
 			}
@@ -625,11 +611,17 @@ public class Parser {
 					parseError(27);
 				}
 			}
-			else {
+			else if(lex.match("[")) {
+				lex.nextLex();
 				expression();
+				if(lex.match("]")) {
+					lex.nextLex();
+				}
+				else {
+					parseError(24);
+				}
 			}
 		}
-		lex.nextLex();
 		
 		stop("reference");
 	}
