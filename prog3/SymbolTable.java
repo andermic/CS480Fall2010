@@ -72,6 +72,11 @@ class GlobalSymbolTable implements SymbolTable {
 			}
 		return null; // should never happen
 	}
+
+	public int size() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
 }
 
 class FunctionSymbolTable implements SymbolTable {
@@ -143,6 +148,11 @@ class FunctionSymbolTable implements SymbolTable {
 			}
 		return null; // should never happen
 	}
+
+	public int size() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
 }
 
 class ClassSymbolTable implements SymbolTable {
@@ -210,5 +220,10 @@ class ClassSymbolTable implements SymbolTable {
 			return cs.value;
 			}
 		return null; // should never happen
+	}
+
+	public int size() {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 }
