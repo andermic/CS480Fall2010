@@ -12,6 +12,13 @@ public class Parser {
 
 	public void parse () throws ParseException {
 		GlobalSymbolTable sym = new GlobalSymbolTable();
+
+		sym.enterType("int", PrimitiveType.IntegerType);
+		sym.enterType("real", PrimitiveType.RealType);
+		sym.enterFunction("printInt", new FunctionType(PrimitiveType.VoidType));
+		sym.enterFunction("printReal", new FunctionType(PrimitiveType.VoidType));
+		sym.enterFunction("printStr", new FunctionType(PrimitiveType.VoidType));
+		
 		lex.nextLex();
 		program(sym);
 		if (lex.tokenCategory() != lex.endOfInput)
@@ -88,24 +95,24 @@ public class Parser {
 			lex.nextLex();
 			if (! lex.isIdentifier())
 				parseError(27);
-			String name = lex.tokenText();
-			if(sym.nameDefined(name) == true)
+			String name = lex.tokenText();			//
+			if(sym.nameDefined(name) == true)		//
 				throw new ParseException(35,name); //Check if the identifier is already in the symbol table
 			lex.nextLex();
 			if (! lex.match("="))
 				parseError(20);
 			lex.nextLex();
 			if (lex.tokenCategory() == lex.intToken) {
-				IntegerNode node = new IntegerNode(new Integer(lex.tokenText()));
-				sym.enterConstant(name,node);
+				IntegerNode node = new IntegerNode(new Integer(lex.tokenText())); //
+				sym.enterConstant(name,node); //
 			}
 			else if (lex.tokenCategory() == lex.realToken) {
-				RealNode node = new RealNode(new Float(lex.tokenText()));
-				sym.enterConstant(name,node);
+				RealNode node = new RealNode(new Float(lex.tokenText())); //
+				sym.enterConstant(name,node); //
 			}
 			else if (lex.tokenCategory() == lex.stringToken){
-				StringNode node = new StringNode(new String(lex.tokenText()));
-				sym.enterConstant(name,node);
+				StringNode node = new StringNode(new String(lex.tokenText())); //
+				sym.enterConstant(name,node); //
 			}
 			else
 				parseError(31);
@@ -118,13 +125,20 @@ public class Parser {
 
 	private void typeDeclaration (SymbolTable sym) throws ParseException {
 		start("typeDeclaration");
-		if (! lex.isIdentifier()) 
-			parseError(27);
-		lex.nextLex();
-		if (! lex.match(":"))
-			parseError(19);
-		lex.nextLex();
-		type(sym);
+		if (lex.match("type")) {
+			lex.nextLex();
+			if (! lex.isIdentifier()) 
+				parseError(27);
+			String name = lex.tokenText();			//
+			if(sym.nameDefined(name) == true)		//
+				throw new ParseException(35,name); //Check if the identifier is already in the symbol table
+			lex.nextLex();
+			if (! lex.match(":"))
+				parseError(19);
+			lex.nextLex();
+			sym.enterType(name, type(sym));
+		} else
+			parseError(14);		
 		stop("typeDeclaration");
 		}
 
@@ -227,34 +241,40 @@ public class Parser {
 		stop("returnType");
 		}
 
-	private void type (SymbolTable sym) throws ParseException {
+	private Type type (SymbolTable sym) throws ParseException{
 		start("type");
-		if (lex.isIdentifier()) {
+		Type result = null;
+		System.out.println(lex.tokenText());
+		if(lex.isIdentifier()) {
+			result = sym.lookupType(lex.tokenText());
 			lex.nextLex();
-			}
-		else if (lex.match("^")) {
+		} else if(lex.match("^")) {
 			lex.nextLex();
-			type(sym);
-			}
-		else if (lex.match("[")) {
+			result = new PointerType(type(sym));
+			// fill in with array code
+		} else if (lex.match("[")) {
 			lex.nextLex();
 			if (lex.tokenCategory() != lex.intToken)
 				parseError(32);
+			int lower = (new Integer(lex.tokenText()).intValue());
 			lex.nextLex();
 			if (! lex.match(":"))
 				parseError(19);
 			lex.nextLex();
 			if (lex.tokenCategory() != lex.intToken)
 				parseError(32);
+			int upper = (new Integer(lex.tokenText()).intValue());
 			lex.nextLex();
 			if (! lex.match("]"))
 				parseError(24);
 			lex.nextLex();
 			type(sym);
+			result = new ArrayType(lower, upper, result);
 			}
 		else
 			parseError(30);
 		stop("type");
+		return result;
 		}
 
 	private void functionBody (SymbolTable sym) throws ParseException {

@@ -1,8 +1,11 @@
+import java.util.*;
+
 //
 //	written (and rewritten) by Tim Budd
 //
 
 interface SymbolTable {
+	
 		// methods to enter values into symbol table
 	public void enterConstant (String name, Ast value);
 	public void enterType (String name, Type type);
@@ -17,6 +20,7 @@ interface SymbolTable {
 }
 
 class GlobalSymbolTable implements SymbolTable {
+	private Hashtable<String, Symbol> table = new Hashtable<String, Symbol>();
 	public void enterConstant (String name, Ast value) 
 		{ enterSymbol(new ConstantSymbol(name, value)); }
 
@@ -32,14 +36,12 @@ class GlobalSymbolTable implements SymbolTable {
 	private void enterSymbol (Symbol s) {
 		// this if for you to figure out.
 		// how should a symbol be stored?
-		// ...
+		// ..!
+		table.put(s.name, s);
 	}
 
 	private Symbol findSymbol (String name) {
-		// this is also for you to figure out.
-		// read a symbol.  If not found, return null
-		// ...
-		return null;
+		return (Symbol) table.get(name);
 	}
 
 	public boolean nameDefined (String name) {
@@ -108,7 +110,9 @@ class FunctionSymbolTable implements SymbolTable {
 	}
 
 	private Symbol findSymbol (String name) {
-		// 
+		Symbol s = new Symbol(name);
+		
+		
 		return null;
 	}
 

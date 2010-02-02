@@ -11,7 +11,7 @@ class Asgn3 {
 		System.out.println("Reading file " + args[0]);
 		try {
 			FileReader instream = new FileReader(args[0]);
-			Parser par = new Parser(new Lexer(instream), false);
+			Parser par = new Parser(new Lexer(instream), true);
 			par.parse();
 		}
 			catch(ParseException e) 
