@@ -158,23 +158,33 @@ public class Parser {
 		start("nameDeclaration");
 		if (! lex.isIdentifier()) 
 			parseError(27);
+		String name = lex.tokenText();
+		if(sym.nameDefined(name) == true)
+			throw new ParseException(35,name); //Check if the identifier is already in the symbol table
 		lex.nextLex();
 		if (! lex.match(":"))
 			parseError(19);
 		lex.nextLex();
-		type(sym);
+		Type t = type(sym);
+		sym.enterVariable(name, t);
 		stop("nameDeclaration");
 		}
 
 	private void classDeclaration(SymbolTable sym) throws ParseException {
 		start("classDeclaration");
+		ClassSymbolTable csym = new ClassSymbolTable(sym);
 		if (! lex.match("class"))
 			parseError(5);
 		lex.nextLex();
 		if (! lex.isIdentifier())
 			parseError(27);
+		String name = lex.tokenText();			//
+		if(sym.nameDefined(name) == true)		//
+			throw new ParseException(35,name);  //Check if the identifier is already in the symbol table
+		ClassType ctype = new ClassType(csym);
+		sym.enterType(name,ctype);
 		lex.nextLex();
-		classBody(sym);
+		classBody(csym);
 		stop("classDeclaration");
 		}
 
@@ -196,15 +206,22 @@ public class Parser {
 
 	private void functionDeclaration(SymbolTable sym) throws ParseException {
 		start("functionDeclaration");
+		FunctionSymbolTable fsym = new FunctionSymbolTable(sym);
 		if (! lex.match("function"))
 			parseError(10);
 		lex.nextLex();
 		if (! lex.isIdentifier())
 			parseError(27);
+		String name = lex.tokenText();
+		if(sym.nameDefined(name) == true)
+			throw new ParseException(35,name); //Check if the identifier is already in the symbol table
 		lex.nextLex();
-		arguments(sym);
-		returnType(sym);
-		functionBody(sym);
+		fsym.doingArguments = true;
+		arguments(fsym);
+		FunctionType ftype = new FunctionType(returnType(fsym));
+		fsym.doingArguments = false;
+		functionBody(fsym,name);
+		sym.enterFunction(name, ftype);
 		stop("functionDeclaration");
 		}
 		
@@ -232,13 +249,14 @@ public class Parser {
 		stop("argumentList");
 		}
 
-	private void returnType (SymbolTable sym) throws ParseException {
+	private Type returnType (SymbolTable sym) throws ParseException {
 		start("returnType");
 		if (lex.match(":")) {
 			lex.nextLex();
-			type(sym);
+			return type(sym);			
 			}
 		stop("returnType");
+		return PrimitiveType.VoidType;
 		}
 
 	private Type type (SymbolTable sym) throws ParseException{
@@ -277,7 +295,7 @@ public class Parser {
 		return result;
 		}
 
-	private void functionBody (SymbolTable sym) throws ParseException {
+	private void functionBody (SymbolTable sym, String name) throws ParseException {
 		start("functionBody");
 		while (! lex.match("begin")) {
 			nonFunctionDeclaration(sym);
@@ -286,7 +304,10 @@ public class Parser {
 			else
 				throw new ParseException(18);
 		}
-		compoundStatement(sym);
+		CodeGen cg = new CodeGen();
+		cg.genProlog(name, sym.size());	//
+		compoundStatement(sym);			//
+		cg.genEpilog(name);				//
 		stop("functionBody");
 		}
 
@@ -518,13 +539,16 @@ public class Parser {
 		stop("term");
 		}
 
-	private void reference (SymbolTable sym) throws ParseException {
+	private Ast reference (SymbolTable sym) throws ParseException {
 		start("reference");
+		Ast result = null;   //
 		if (! lex.isIdentifier())
 			parseError(27);
+		else result = sym.lookupName(new FramePointer(), lex.tokenText()); //
 		lex.nextLex();
 		while (lex.match("^") || lex.match(".") || lex.match("[")) {
 			if (lex.match("^")) {
+				
 				lex.nextLex();
 				}
 			else if (lex.match(".")) {
@@ -542,6 +566,7 @@ public class Parser {
 				}
 			}
 		stop("reference");
+		return result; //
 		}
 
 }
