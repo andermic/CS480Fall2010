@@ -1,3 +1,10 @@
+//
+//	SymbolTable.java, CS 480/580, Winter 2010
+//	written by Tim Budd
+//		modified by: Sam Heinith, Mike Anderson, & Rob McGuire-Dale
+//  last modified: 2/3/10
+//
+
 import java.util.*;
 
 //
@@ -189,12 +196,7 @@ class FunctionSymbolTable implements SymbolTable {
 	}
 
 	public int size() {
-		int size = 0;
-		for(Symbol s : locals) {
-			Type t = ((OffsetSymbol) s).type;
-			size += ((AddressType)t).baseType.size();
-		}	    
-		return size;
+		return Math.abs(localOffset);
 	}
 }
 
@@ -220,7 +222,6 @@ class ClassSymbolTable implements SymbolTable {
 		{ 
 			// again, you need to do something different here.
 			enterSymbol(new OffsetSymbol(name, new AddressType(type), offset));
-			System.out.println("Entering symbol into ClassSymbolTable: "+name);
 			offset += type.size();
 		}
 
@@ -239,7 +240,6 @@ class ClassSymbolTable implements SymbolTable {
 		
 	public Symbol findSymbol (String name) {
  		for(Symbol s : fields) {
- 			//System.out.println(s.name + " vs " + name);
 			if(s.name.equals(name))
 				return s;
 		}	
@@ -284,22 +284,7 @@ class ClassSymbolTable implements SymbolTable {
 	}
 
 	public int size() {
-		/*int size = 0;
-		for(Symbol s : fields) {
-			Type t = null;
-			if(s instanceof OffsetSymbol)
-				t = ((OffsetSymbol) s).type;
-			else if(s instanceof ConstantSymbol)
-				t = ((ConstantSymbol) s).value.type;
-			else {
-				System.out.println("Hello");
-				return 0;
-			}
-			
-			
-			size += ((AddressType)t).baseType.size();
-		}	    
-		return size;*/
+
 		return offset;
 
 	}

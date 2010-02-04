@@ -1,7 +1,8 @@
 //
-//	parser skeleton, CS 480/580, Winter 2001
+//	parser skeleton, CS 480/580, Winter 2010
 //	written by Tim Budd
-//		modified by:
+//		modified by: Sam Heinith, Mike Anderson, & Rob McGuire-Dale
+//  last modified: 2/3/10
 //
 
 public class Parser {
@@ -107,7 +108,7 @@ public class Parser {
 				sym.enterConstant(name,node); //
 			}
 			else if (lex.tokenCategory() == lex.realToken) {
-				RealNode node = new RealNode(new Float(lex.tokenText())); //
+				RealNode node = new RealNode(new Double(lex.tokenText())); //
 				sym.enterConstant(name,node); //
 			}
 			else if (lex.tokenCategory() == lex.stringToken){
@@ -514,7 +515,6 @@ public class Parser {
 		else if (lex.match("&")) {
 			lex.nextLex();
 			Ast val = reference(sym);
-			val.genCode();
 			}
 		else if (lex.tokenCategory() == lex.intToken) {
 			lex.nextLex();
@@ -583,7 +583,7 @@ public class Parser {
 				indexExpression = new BinaryNode( BinaryNode.minus, 
 					PrimitiveType.IntegerType,
 					indexExpression, new IntegerNode(atype.lowerBound));
-				BinaryNode mnode = new BinaryNode(BinaryNode.times, new AddressType(atype.elementType), indexExpression, new IntegerNode(atype.elementType.size()));
+				BinaryNode mnode = new BinaryNode(BinaryNode.times, atype.elementType, indexExpression, new IntegerNode(atype.elementType.size()));
 				node = new BinaryNode(BinaryNode.plus, new AddressType(atype.elementType), node, mnode);				
 				if (! lex.match("]"))
 					parseError(24);
