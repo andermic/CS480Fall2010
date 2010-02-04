@@ -86,6 +86,15 @@ class FunctionSymbolTable implements SymbolTable {
 
 	FunctionSymbolTable (SymbolTable st) { surrounding = st; }
 
+	public void enteringParameters (boolean flag) { //
+		
+	}
+
+	public Type parameterType (int index) { //
+		return null;
+	}
+	
+	
 	public void enterConstant (String name, Ast value) 
 		{ enterSymbol(new ConstantSymbol(name, value)); }
 

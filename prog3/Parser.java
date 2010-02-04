@@ -541,32 +541,66 @@ public class Parser {
 
 	private Ast reference (SymbolTable sym) throws ParseException {
 		start("reference");
-		Ast result = null;   //
+		Ast node = null;   //
 		if (! lex.isIdentifier())
 			parseError(27);
-		else result = sym.lookupName(new FramePointer(), lex.tokenText()); //
+		else node = sym.lookupName(new FramePointer(), lex.tokenText()); //
 		lex.nextLex();
 		while (lex.match("^") || lex.match(".") || lex.match("[")) {
 			if (lex.match("^")) {
-				
+				Type btype = addressBaseType(node.type);
+				if ( !(btype instanceof PointerType) )
+					parseError(38);
+				PointerType pb = (PointerType) btype;
+				node = new UnaryNode(UnaryNode.dereference,new AddressType(pb.baseType), node);
 				lex.nextLex();
 				}
 			else if (lex.match(".")) {
 				lex.nextLex();
 				if (! lex.isIdentifier())
 					parseError(27);
+				Type ctype = addressBaseType(node.type);
+				if ( !(ctype instanceof ClassType) )
+					parseError(39);
 				lex.nextLex();
+				if(sym.nameDefined(lex.tokenText()) == false)
+					parseError(29);
+				BinaryNode bnode = new BinaryNode(BinaryNode.plus, ctype, node, sym.lookupName(node, lex.tokenText()));
+				node = bnode;
 				}
 			else {
 				lex.nextLex();
 				expression(sym);
+				Ast indexExpression = new IntegerNode(42); // for now
+				ArrayType atype = (ArrayType) addressBaseType(node.type);
+				if ( !(atype instanceof ArrayType) )
+					parseError(40);
+				if (! indexExpression.type.equals(PrimitiveType.IntegerType))
+					parseError(41);
+				indexExpression = new BinaryNode( BinaryNode.minus, 
+					PrimitiveType.IntegerType,
+					indexExpression, new IntegerNode(atype.lowerBound));
+				
+				BinaryNode mnode = new BinaryNode(BinaryNode.times, new AddressType(atype.elementType), node, indexExpression);
+				node = mnode;
 				if (! lex.match("]"))
 					parseError(24);
 				lex.nextLex();
 				}
 			}
 		stop("reference");
-		return result; //
+		return node; //
 		}
+	
+	private Type addressBaseType(Type t) throws ParseException {
+		if (! (t instanceof AddressType))
+		parseError(37);
+		AddressType at = (AddressType) t;
+		return at.baseType;
+		}
+
+
+
+	
 
 }
