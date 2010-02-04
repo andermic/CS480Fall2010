@@ -262,7 +262,6 @@ public class Parser {
 	private Type type (SymbolTable sym) throws ParseException{
 		start("type");
 		Type result = null;
-		System.out.println(lex.tokenText());
 		if(lex.isIdentifier()) {
 			result = sym.lookupType(lex.tokenText());
 			lex.nextLex();
@@ -286,7 +285,7 @@ public class Parser {
 			if (! lex.match("]"))
 				parseError(24);
 			lex.nextLex();
-			type(sym);
+			result = type(sym);
 			result = new ArrayType(lower, upper, result);
 			}
 		else
@@ -413,7 +412,8 @@ public class Parser {
 
 	private void assignOrFunction (SymbolTable sym) throws ParseException {
 		start("assignOrFunction");
-		reference(sym);
+		Ast val = reference(sym);
+		val.genCode();
 		if (lex.match("=")) {
 			lex.nextLex();
 			expression(sym);
@@ -513,7 +513,8 @@ public class Parser {
 			}
 		else if (lex.match("&")) {
 			lex.nextLex();
-			reference(sym);
+			Ast val = reference(sym);
+			val.genCode();
 			}
 		else if (lex.tokenCategory() == lex.intToken) {
 			lex.nextLex();
@@ -525,7 +526,8 @@ public class Parser {
 			lex.nextLex();
 			}
 		else if (lex.isIdentifier()) {
-			reference(sym);
+			Ast val = reference(sym);
+			val.genCode();
 			if (lex.match("(")) {
 				lex.nextLex();
 				parameterList(sym);
@@ -562,27 +564,27 @@ public class Parser {
 				Type ctype = addressBaseType(node.type);
 				if ( !(ctype instanceof ClassType) )
 					parseError(39);
-				lex.nextLex();
-				if(sym.nameDefined(lex.tokenText()) == false)
+				ClassType ct = (ClassType) ctype;
+				if(ct.symbolTable.nameDefined(lex.tokenText()) == false)
 					parseError(29);
-				BinaryNode bnode = new BinaryNode(BinaryNode.plus, ctype, node, sym.lookupName(node, lex.tokenText()));
-				node = bnode;
+				//BinaryNode bnode = new BinaryNode(BinaryNode.plus, ctype, node, sym.lookupName(node, lex.tokenText()));
+				node = ct.symbolTable.lookupName(node, lex.tokenText());
+				lex.nextLex();
 				}
 			else {
 				lex.nextLex();
 				expression(sym);
 				Ast indexExpression = new IntegerNode(42); // for now
-				ArrayType atype = (ArrayType) addressBaseType(node.type);
-				if ( !(atype instanceof ArrayType) )
+				if ( !(addressBaseType(node.type) instanceof ArrayType) )
 					parseError(40);
+				ArrayType atype = (ArrayType) addressBaseType(node.type);
 				if (! indexExpression.type.equals(PrimitiveType.IntegerType))
 					parseError(41);
 				indexExpression = new BinaryNode( BinaryNode.minus, 
 					PrimitiveType.IntegerType,
 					indexExpression, new IntegerNode(atype.lowerBound));
-				
-				BinaryNode mnode = new BinaryNode(BinaryNode.times, new AddressType(atype.elementType), node, indexExpression);
-				node = mnode;
+				BinaryNode mnode = new BinaryNode(BinaryNode.times, new AddressType(atype.elementType), indexExpression, new IntegerNode(atype.elementType.size()));
+				node = new BinaryNode(BinaryNode.plus, new AddressType(atype.elementType), node, mnode);				
 				if (! lex.match("]"))
 					parseError(24);
 				lex.nextLex();

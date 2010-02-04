@@ -17,6 +17,7 @@ interface SymbolTable {
 	public boolean nameDefined (String name);
 	public Type lookupType (String name) throws ParseException;
 	public Ast lookupName (Ast base, String name) throws ParseException;
+	public Symbol findSymbol (String name);
 }
 
 class GlobalSymbolTable implements SymbolTable {
@@ -40,7 +41,7 @@ class GlobalSymbolTable implements SymbolTable {
 		table.put(s.name, s);
 	}
 
-	private Symbol findSymbol (String name) {
+	public Symbol findSymbol (String name) {
 		return (Symbol) table.get(name);
 	}
 
@@ -83,9 +84,13 @@ class GlobalSymbolTable implements SymbolTable {
 
 class FunctionSymbolTable implements SymbolTable {
 	SymbolTable surrounding = null;
-
+	private ArrayList<Symbol> locals = new ArrayList<Symbol>();
+	private ArrayList<Symbol> parameters = new ArrayList<Symbol>();
 	FunctionSymbolTable (SymbolTable st) { surrounding = st; }
 
+	private int localOffset = 0;
+	private int paramOffset = 8;
+	
 	public void enteringParameters (boolean flag) { //
 		
 	}
@@ -106,7 +111,14 @@ class FunctionSymbolTable implements SymbolTable {
 		// this is for you to figure out.
 		// I'll leave a stub, which you should
 		// replace with the real thing
-		enterSymbol(new OffsetSymbol(name, new AddressType(type), 27));
+		if(doingArguments == true) {
+			enterSymbol(new OffsetSymbol(name, new AddressType(type), paramOffset));
+			paramOffset += type.size();
+		}
+		else {
+			localOffset -= type.size();
+			enterSymbol(new OffsetSymbol(name, new AddressType(type), localOffset));
+		}		
 	}
 
 	public void enterFunction (String name, FunctionType ft) 
@@ -116,12 +128,26 @@ class FunctionSymbolTable implements SymbolTable {
 
 	private void enterSymbol (Symbol s) {
 		// you can just copy from the first one
+		//System.out.println("name = " + s.name);
+		if(doingArguments == true) {
+			parameters.add(s);
+			//System.out.println("Adding to parameters "+s.name);
+		}
+		else {
+			locals.add(s);
+			//System.out.println("Adding to locals "+s.name+s.type.baseType.size());
+		}
 	}
 
-	private Symbol findSymbol (String name) {
-		Symbol s = new Symbol(name);
-		
-		
+	public Symbol findSymbol (String name) {
+		ArrayList<Symbol> list = new ArrayList<Symbol>();
+		list.addAll(locals); 
+		list.addAll(parameters);
+		for(Symbol s : list) {
+			//System.out.println(s.name + " vs " + name);
+			if(s.name.equals(name))
+				return s;
+		}		
 		return null;
 	}
 
@@ -163,14 +189,25 @@ class FunctionSymbolTable implements SymbolTable {
 	}
 
 	public int size() {
-		// TODO Auto-generated method stub
-		return 0;
+		int size = 0;
+		for(Symbol s : locals) {
+			Type t = ((OffsetSymbol) s).type;
+			size += ((AddressType)t).baseType.size();
+		}	    
+		return size;
 	}
 }
 
+
+
+
+
+
 class ClassSymbolTable implements SymbolTable {
 	private SymbolTable surround = null;
-
+	private ArrayList<Symbol> fields = new ArrayList<Symbol>();
+	private int offset = 0;
+	
 	ClassSymbolTable (SymbolTable s) { surround = s; }
 
 	public void enterConstant (String name, Ast value) 
@@ -182,7 +219,9 @@ class ClassSymbolTable implements SymbolTable {
 	public void enterVariable (String name, Type type)
 		{ 
 			// again, you need to do something different here.
-			enterSymbol(new OffsetSymbol(name, new AddressType(type), 27));
+			enterSymbol(new OffsetSymbol(name, new AddressType(type), offset));
+			System.out.println("Entering symbol into ClassSymbolTable: "+name);
+			offset += type.size();
 		}
 
 	public void enterFunction (String name, FunctionType ft) 
@@ -190,14 +229,23 @@ class ClassSymbolTable implements SymbolTable {
 		// but we will leave alone for now
 		{ enterSymbol (new GlobalSymbol(name, ft, name)); }
 
-	private void enterSymbol (Symbol s) {
-		// ...
-	}
 
-	private Symbol findSymbol (String name) {
-		// ...
+	private void enterSymbol (Symbol s) {
+		// this if for you to figure out.
+		// how should a symbol be stored?
+		// ..!
+		fields.add(s);
+	}
+		
+	public Symbol findSymbol (String name) {
+ 		for(Symbol s : fields) {
+ 			//System.out.println(s.name + " vs " + name);
+			if(s.name.equals(name))
+				return s;
+		}	
 		return null;
 	}
+	
 
 	public boolean nameDefined (String name) {
 		Symbol s = findSymbol(name);
@@ -236,7 +284,23 @@ class ClassSymbolTable implements SymbolTable {
 	}
 
 	public int size() {
-		// TODO Auto-generated method stub
-		return 0;
+		/*int size = 0;
+		for(Symbol s : fields) {
+			Type t = null;
+			if(s instanceof OffsetSymbol)
+				t = ((OffsetSymbol) s).type;
+			else if(s instanceof ConstantSymbol)
+				t = ((ConstantSymbol) s).value.type;
+			else {
+				System.out.println("Hello");
+				return 0;
+			}
+			
+			
+			size += ((AddressType)t).baseType.size();
+		}	    
+		return size;*/
+		return offset;
+
 	}
 }
