@@ -1,3 +1,5 @@
+import java.util.Vector;
+
 //
 //	parser skeleton, CS 480/580, Winter 1998
 //	written by Tim Budd
@@ -422,16 +424,23 @@ public class Parser {
 		stop("assignOrFunction");
 		}
 
-	private void parameterList (SymbolTable sym) throws ParseException {
+	private Vector parameterList (SymbolTable sym) throws ParseException {  //TODO
 		start("parameterList");
+		Ast tree = null;
+		Vector result = new Vector();
 		if (firstExpression()) {
-			expression(sym);
+			//String var = lex.tokenText();
+			tree = expression(sym);
+			//if(! tree.type.equals(sym.lookupType(var)));
+				
+			result.addElement(tree);
 			while (lex.match(",")) {
 				lex.nextLex();
-				expression(sym);
+				result.addElement(expression(sym));
 				}
 			}
 		stop("parameterList");
+		return result;
 		}
 
 	private Ast expression (SymbolTable sym) throws ParseException {
@@ -570,55 +579,75 @@ public class Parser {
 
 	private Ast term (SymbolTable sym) throws ParseException {
 		start("term");
-		Ast tree = null;
+		Ast result = null;
 		if (lex.match("(")) {
 			lex.nextLex();
-			expression(sym);
+			result = expression(sym);
 			if (! lex.match(")"))
 				parseError(22);
 			lex.nextLex();
-			}
+		}
 		else if (lex.match("not")) {
 			lex.nextLex();
-			term(sym);
-			}
+			result = term(sym);
+			MustBeBoolean(result);
+			result = new UnaryNode(UnaryNode.notOp, result.type, result);
+		}
 		else if (lex.match("new")) {
 			lex.nextLex();
-			type(sym);
-			}
+			Type t = type(sym);
+			IntegerNode sizeNode = new IntegerNode(t.size());
+			result = new UnaryNode(UnaryNode.newOp, t, sizeNode);			
+		}
 		else if (lex.match("-")) {
 			lex.nextLex();
-			term(sym);
-			}
-		else if (lex.match("&")) {
+			result = term(sym);
+			if(! (result.type.equals(PrimitiveType.IntegerType) || result.type.equals(PrimitiveType.RealType)) )
+					parseError(46);
+			result = new UnaryNode(UnaryNode.negation, result.type, result);
+		}
+		else if (lex.match("&")) {  //Needs testing
 			lex.nextLex();
-			reference(sym);
-			}
-		else if (lex.tokenCategory() == lex.intToken) {
+			result = reference(sym);
+			result.type = new PointerType(addressBaseType(result.type));
+		}
+		else if (lex.tokenCategory() == Lexer.intToken) {
+			result = new IntegerNode(new Integer(lex.tokenText()));
 			lex.nextLex();
-			}
-		else if (lex.tokenCategory() == lex.realToken) {
+		}
+		else if (lex.tokenCategory() == Lexer.realToken) {
+			result = new RealNode(new Float(lex.tokenText()));
 			lex.nextLex();
-			}
-		else if (lex.tokenCategory() == lex.stringToken) {
+		}
+		else if (lex.tokenCategory() == Lexer.stringToken) {
+			result = new StringNode(new String(lex.tokenText()));
 			lex.nextLex();
-			}
+		}
 		else if (lex.isIdentifier()) {
-			Ast val = reference(sym);
-			//val.genCode();
+			result = reference(sym);
+			//result.genCode();
 			if (lex.match("(")) {
+				if(! (result.type instanceof FunctionType) )
+					parseError(45);
 				lex.nextLex();
 				parameterList(sym);
 				if (! lex.match(")"))
 					parseError(22);
 				lex.nextLex();
-				}
-			}
+			} else {
+				if(result.type instanceof AddressType ) {
+					result = new UnaryNode(UnaryNode.dereference, addressBaseType(result.type), result);
+				} else {
+				//Result is unchanged from the reference call				
+				}			
+			}			
+			
+		}
 		else
 			parseError(33);
 		stop("term");
-		return tree;
-		}
+		return result;
+	}
 
 	private Type addressBaseType(Type t) throws ParseException {
 		if (! (t instanceof AddressType))
