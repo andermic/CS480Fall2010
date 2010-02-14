@@ -210,7 +210,7 @@ public class Parser {
 		arguments(fsym);
 		fsym.doingArguments = false;
 		Type rt = returnType(sym);
-		Type ft = new FunctionType(rt);
+		FunctionType ft = new FunctionType(rt);
 		ft.symbolTable = fsym;
 		sym.enterFunction(name, ft);
 		functionBody(fsym, name);
@@ -405,7 +405,7 @@ public class Parser {
 	private void assignOrFunction (SymbolTable sym) throws ParseException {
 		start("assignOrFunction");
 		Ast val = reference(sym);
-		val.genCode();
+		//val.genCode();
 		if (lex.match("=")) {
 			lex.nextLex();
 			expression(sym);
@@ -434,15 +434,30 @@ public class Parser {
 		stop("parameterList");
 		}
 
-	private void expression (SymbolTable sym) throws ParseException {
+	private Ast expression (SymbolTable sym) throws ParseException {
 		start("expression");
-		relExpression(sym);
+		Ast result = relExpression(sym);
+		MustBeBoolean(result);
 		while (lex.match("and") || lex.match("or")) {
+			String text = lex.tokenText();
 			lex.nextLex();
-			relExpression(sym);
+			Ast right = relExpression(sym);
+			MustBeBoolean(right);
+			if(text.equals("and")) {
+				result = new BinaryNode(BinaryNode.and, PrimitiveType.BooleanType, result, right);
+			} else {
+				result = new BinaryNode(BinaryNode.or, PrimitiveType.BooleanType, result, right);
+			  }
 			}
 		stop("expression");
+		return result;
 		}
+	
+	private void MustBeBoolean(Ast tree) throws ParseException { //Needs testing
+		if (tree.type.equals(PrimitiveType.BooleanType))
+			parseError(43);
+		}
+	
 
 	private boolean relOp() {
 		if (lex.match("<") || lex.match("<=") ||
@@ -452,38 +467,65 @@ public class Parser {
 		return false;
 		}
 
-	private void relExpression (SymbolTable sym) throws ParseException {
+	private Ast relExpression (SymbolTable sym) throws ParseException {
 		start("relExpression");
-		plusExpression(sym);
+		Ast result = plusExpression(sym);
 		if (relOp()) {
+			String relation = lex.tokenText();
 			lex.nextLex();
-			plusExpression(sym);
+			Ast right = plusExpression(sym);
+			if(! result.type.equals(right.type))
+				parseError(44);
+			if(relation.equals("<"))
+				result = new BinaryNode(BinaryNode.less, 
+						PrimitiveType.BooleanType, result, right);
+			else if(relation.equals("<="))
+				result = new BinaryNode(BinaryNode.lessEqual, 
+						PrimitiveType.BooleanType, result, right);
+			else if(relation.equals("=="))
+				result = new BinaryNode(BinaryNode.equal, 
+						PrimitiveType.BooleanType, result, right);
+			else if(relation.equals("!="))
+				result = new BinaryNode(BinaryNode.notEqual, 
+						PrimitiveType.BooleanType, result, right);
+			else if(relation.equals(">="))
+				result = new BinaryNode(BinaryNode.greaterEqual, 
+						PrimitiveType.BooleanType, result, right);
+			else if(relation.equals(">"))
+				result = new BinaryNode(BinaryNode.greater, 
+						PrimitiveType.BooleanType, result, right);
 			}
 		stop("relExpression");
+		return result;
 		}
 
-	private void plusExpression (SymbolTable sym) throws ParseException {
+	private Ast plusExpression (SymbolTable sym) throws ParseException {
 		start("plusExpression");
+		Ast tree = null;
 		timesExpression(sym);
 		while (lex.match("+") || lex.match("-") || lex.match("<<")) {
 			lex.nextLex();
 			timesExpression(sym);
 			}
 		stop("plusExpression");
+		return tree;
 		}
 
-	private void timesExpression (SymbolTable sym) throws ParseException {
+	private Ast timesExpression (SymbolTable sym) throws ParseException {
 		start("timesExpression");
+		Ast tree = null;
 		term(sym);
 		while (lex.match("*") || lex.match("/") || lex.match("%")) {
 			lex.nextLex();
 			term(sym);
 			}
 		stop("timesExpression");
+		return tree;
 		}
 
-	private void term (SymbolTable sym) throws ParseException {
+	private Ast term (SymbolTable sym) throws ParseException {
 		start("term");
+		Ast tree = null;
 		if (lex.match("(")) {
 			lex.nextLex();
 			expression(sym);
@@ -518,7 +560,7 @@ public class Parser {
 			}
 		else if (lex.isIdentifier()) {
 			Ast val = reference(sym);
-			val.genCode();
+			//val.genCode();
 			if (lex.match("(")) {
 				lex.nextLex();
 				parameterList(sym);
@@ -530,6 +572,7 @@ public class Parser {
 		else
 			parseError(33);
 		stop("term");
+		return tree;
 		}
 
 	private Type addressBaseType(Type t) throws ParseException {
@@ -571,8 +614,7 @@ public class Parser {
 				}
 			else {
 				lex.nextLex();
-				expression(sym);
-				Ast indexExpression = new IntegerNode(42);
+				Ast indexExpression = expression(sym);
 				Type b = addressBaseType(result.type);
 				if ( !(b instanceof ArrayType) )
 					parseError(40);
