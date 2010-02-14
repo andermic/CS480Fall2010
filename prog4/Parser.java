@@ -501,27 +501,72 @@ public class Parser {
 
 	private Ast plusExpression (SymbolTable sym) throws ParseException {
 		start("plusExpression");
-		Ast tree = null;
-		timesExpression(sym);
+		Ast result = timesExpression(sym);
 		while (lex.match("+") || lex.match("-") || lex.match("<<")) {
+			String addOp = lex.tokenText();
 			lex.nextLex();
-			timesExpression(sym);
+			Ast right = timesExpression(sym);
+			if(addOp.equals("<<")) {
+				if ((! result.type.equals(PrimitiveType.IntegerType)) ||
+				 (! right.type.equals(PrimitiveType.IntegerType)))
+					parseError(41);
+				
+				result = new BinaryNode(BinaryNode.leftShift, PrimitiveType.IntegerType, result, right);
+			} else { 
+				if(result.type.equals(PrimitiveType.IntegerType) &&
+				 right.type.equals(PrimitiveType.RealType))
+					result = new UnaryNode(UnaryNode.convertToReal, PrimitiveType.RealType, result);
+				if(right.type.equals(PrimitiveType.IntegerType) &&
+				 result.type.equals(PrimitiveType.RealType))
+					right = new UnaryNode(UnaryNode.convertToReal, PrimitiveType.RealType, right);
+				if(! (result.type.equals(PrimitiveType.IntegerType) || result.type.equals(PrimitiveType.RealType) &&
+				 right.type.equals(PrimitiveType.IntegerType) || right.type.equals(PrimitiveType.RealType)) )
+					parseError(46);
+				if(! result.type.equals(right.type))
+					parseError(44);
 			}
-		stop("plusExpression");
-		return tree;
+			if(addOp.equals("+")) 
+				result = new BinaryNode(BinaryNode.plus, result.type, result, right);
+			else 
+				result = new BinaryNode(BinaryNode.minus, result.type, result, right);
 		}
+		stop("plusExpression");
+		return result;
+	}
 
 	private Ast timesExpression (SymbolTable sym) throws ParseException {
 		start("timesExpression");
-		Ast tree = null;
-		term(sym);
+		Ast result = term(sym);
 		while (lex.match("*") || lex.match("/") || lex.match("%")) {
+			String multOp = lex.tokenText();
 			lex.nextLex();
-			term(sym);
+			Ast right = term(sym);
+			if(multOp.equals("%")) {
+				if ((! result.type.equals(PrimitiveType.IntegerType)) ||
+				 (! right.type.equals(PrimitiveType.IntegerType)))
+					parseError(41);
+				result = new BinaryNode(BinaryNode.remainder, PrimitiveType.IntegerType, result, right);
+			} else { 
+				if(result.type.equals(PrimitiveType.IntegerType) &&
+				 right.type.equals(PrimitiveType.RealType))
+					result = new UnaryNode(UnaryNode.convertToReal, PrimitiveType.RealType, result);
+				if(right.type.equals(PrimitiveType.IntegerType) &&
+				 result.type.equals(PrimitiveType.RealType))
+					right = new UnaryNode(UnaryNode.convertToReal, PrimitiveType.RealType, right);
+				if(! (result.type.equals(PrimitiveType.IntegerType) || result.type.equals(PrimitiveType.RealType) &&
+				 right.type.equals(PrimitiveType.IntegerType) || right.type.equals(PrimitiveType.RealType)) )
+					parseError(46);
+				if(! result.type.equals(right.type))
+					parseError(44);
 			}
-		stop("timesExpression");
-		return tree;
+			if(multOp.equals("*")) 
+				result = new BinaryNode(BinaryNode.times, result.type, result, right);
+			else 
+				result = new BinaryNode(BinaryNode.divide, result.type, result, right);			
 		}
+		stop("timesExpression");
+		return result;
+	}
 
 	private Ast term (SymbolTable sym) throws ParseException {
 		start("term");
