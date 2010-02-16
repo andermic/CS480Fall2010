@@ -380,8 +380,7 @@ public class Parser {
 		else
 			lex.nextLex();
 		Ast result = expression(sym);
-		if(! result.type.equals(PrimitiveType.BooleanType))
-			parseError(43);
+		MustBeBoolean(result);
 		Label label1 = new Label();
 		result.branchIfFalse(label1);
 				
@@ -415,8 +414,7 @@ public class Parser {
 		else
 			lex.nextLex();
 		Ast result = expression(sym);
-		if(! result.type.equals(PrimitiveType.BooleanType))
-			parseError(43);
+		MustBeBoolean(result);
 		if (! lex.match(")"))
 			throw new ParseException(22);
 		
@@ -442,6 +440,8 @@ public class Parser {
 			lex.nextLex();
 			Ast right = expression(sym);
 			Type leftBaseType = addressBaseType(result.type);
+			//System.out.println("*****Left type "+leftBaseType.toString()+" *****");
+			//System.out.println("*****Right type "+right.type.toString()+" *****");
 			if ( !(leftBaseType.equals(right.type)) )
 				parseError(44);
 			CodeGen.genAssign(result, right);
@@ -464,7 +464,7 @@ public class Parser {
 
 	private Vector parameterList (SymbolTable sym) throws ParseException {  //TODO
 		start("parameterList");
-		Stack<Type> paramTypes = ((FunctionSymbolTable)sym).getParams();
+		//Stack<Type> paramTypes = ((FunctionSymbolTable)sym).getParams();
 		Ast tree = null;
 		Vector result = new Vector();
 		//System.out.println(lex.tokenText());
@@ -488,7 +488,7 @@ public class Parser {
 	private Ast expression (SymbolTable sym) throws ParseException {
 		start("expression");
 		Ast result = relExpression(sym);
-		MustBeBoolean(result);
+		//MustBeBoolean(result); bad
 		while (lex.match("and") || lex.match("or")) {
 			String text = lex.tokenText();
 			lex.nextLex();
@@ -505,7 +505,8 @@ public class Parser {
 		}
 	
 	private void MustBeBoolean(Ast tree) throws ParseException { //Needs testing
-		if (tree.type.equals(PrimitiveType.BooleanType))
+		//System.out.println("****Must be boolean type: "+tree.type.toString()+"****");
+		if (! (tree.type.equals(PrimitiveType.BooleanType)) )
 			parseError(43);
 		}
 	
@@ -575,11 +576,12 @@ public class Parser {
 					parseError(46);
 				if(! result.type.equals(right.type))
 					parseError(44);
+			
+				if(addOp.equals("+")) 
+					result = new BinaryNode(BinaryNode.plus, result.type, result, right);
+				else 
+					result = new BinaryNode(BinaryNode.minus, result.type, result, right);
 			}
-			if(addOp.equals("+")) 
-				result = new BinaryNode(BinaryNode.plus, result.type, result, right);
-			else 
-				result = new BinaryNode(BinaryNode.minus, result.type, result, right);
 		}
 		stop("plusExpression");
 		return result;
@@ -639,7 +641,8 @@ public class Parser {
 			lex.nextLex();
 			Type t = type(sym);
 			IntegerNode sizeNode = new IntegerNode(t.size());
-			result = new UnaryNode(UnaryNode.newOp, t, sizeNode);			
+			//Changed the next line to make a node with a pointer instead of the straight type, t.
+			result = new UnaryNode(UnaryNode.newOp, new PointerType(t), sizeNode);			
 		}
 		else if (lex.match("-")) {
 			lex.nextLex();
@@ -658,7 +661,7 @@ public class Parser {
 			lex.nextLex();
 		}
 		else if (lex.tokenCategory() == Lexer.realToken) {
-			result = new RealNode(new Float(lex.tokenText()));
+			result = new RealNode(new Double(lex.tokenText()));
 			lex.nextLex();
 		}
 		else if (lex.tokenCategory() == Lexer.stringToken) {
