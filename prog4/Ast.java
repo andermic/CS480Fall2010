@@ -18,7 +18,7 @@ abstract class Ast {
 
 	public void branchIfFalse (Label lab) throws ParseException { 
 		genCode();
-		System.out.println("Branch if False " + lab);
+		System.out.println("Branch if Fals " + lab);
 	}
 }
 
