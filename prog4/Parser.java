@@ -1,4 +1,4 @@
-import java.util.Vector;
+import java.util.*;
 
 //
 //	parser skeleton, CS 480/580, Winter 1998
@@ -395,29 +395,48 @@ public class Parser {
 			throw new ParseException(21);
 		else
 			lex.nextLex();
-		expression(sym);
+		Ast result = expression(sym);
+		if(! result.type.equals(PrimitiveType.BooleanType))
+			parseError(43);
 		if (! lex.match(")"))
 			throw new ParseException(22);
-		else
-			lex.nextLex();
+		
+		lex.nextLex();
+		
+		Label label1 = new Label();
+		label1.genCode();
+		
+		Label label2 = new Label();
+		result.branchIfFalse(label2);
 		statement(sym);
+		label1.genBranch();
+		label2.genCode();
+		
 		stop("whileStatement");
 		}
 
 	private void assignOrFunction (SymbolTable sym) throws ParseException {
 		start("assignOrFunction");
-		Ast val = reference(sym);
+		Ast result = reference(sym);
 		//val.genCode();
 		if (lex.match("=")) {
 			lex.nextLex();
-			expression(sym);
+			Ast right = expression(sym);
+			Type leftBaseType = addressBaseType(result.type);
+			if ( !(leftBaseType.equals(right.type)) )
+				parseError(44);
+			CodeGen.genAssign(result, right);
 			}
 		else if (lex.match("(")) {
+			if ( ! (result.type instanceof FunctionType) )
+				parseError(45);
 			lex.nextLex();
-			parameterList(sym);
+			Vector params = parameterList(sym);
 			if (! lex.match(")"))
 				parseError(22);
 			lex.nextLex();
+			FunctionCallNode fnode = new FunctionCallNode(result, params);
+			fnode.genCode();
 			}
 		else
 			parseError(20);
@@ -426,17 +445,21 @@ public class Parser {
 
 	private Vector parameterList (SymbolTable sym) throws ParseException {  //TODO
 		start("parameterList");
+		Stack<Type> paramTypes = ((FunctionSymbolTable)sym).getParams();
 		Ast tree = null;
 		Vector result = new Vector();
+		//System.out.println(lex.tokenText());
 		if (firstExpression()) {
-			//String var = lex.tokenText();
 			tree = expression(sym);
-			//if(! tree.type.equals(sym.lookupType(var)));
-				
+			//if(! tree.type.equals( paramTypes.pop() ))
+				//parseError(44);
 			result.addElement(tree);
 			while (lex.match(",")) {
 				lex.nextLex();
-				result.addElement(expression(sym));
+				tree = expression(sym);
+				//if(! tree.type.equals( paramTypes.pop() ))
+					//parseError(44);
+				result.addElement(tree);
 				}
 			}
 		stop("parameterList");
@@ -630,10 +653,11 @@ public class Parser {
 				if(! (result.type instanceof FunctionType) )
 					parseError(45);
 				lex.nextLex();
-				parameterList(sym);
+				Vector params = parameterList(sym);
 				if (! lex.match(")"))
 					parseError(22);
 				lex.nextLex();
+				result = new FunctionCallNode(result, params);
 			} else {
 				if(result.type instanceof AddressType ) {
 					result = new UnaryNode(UnaryNode.dereference, addressBaseType(result.type), result);
@@ -641,7 +665,6 @@ public class Parser {
 				//Result is unchanged from the reference call				
 				}			
 			}			
-			
 		}
 		else
 			parseError(33);

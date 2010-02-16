@@ -1,6 +1,7 @@
 //
 //	written by Tim Budd
 //
+import java.util.*;
 
 interface SymbolTable {
 		// methods to enter values into symbol table
@@ -183,13 +184,17 @@ class FunctionSymbolTable implements SymbolTable {
 
 	public boolean doingArguments = true;
 	private SymbolLink firstLink = null;
+	
 	private class SymbolLink {
+		
 		public Symbol sym;
 		public SymbolLink link;
+		
 		public SymbolLink (Symbol s, SymbolLink l) 
 			{ sym = s; link = l; }
 	}
 	private void enterSymbol (Symbol s) {
+		//System.out.println("**EnterName: " +s.name +"**");
 		firstLink = new SymbolLink(s, firstLink);
 	}
 
@@ -234,4 +239,20 @@ class FunctionSymbolTable implements SymbolTable {
 	}
 
 	public int size () { return localOffset; }
+	
+	public Stack<Type> getParams(){
+		Stack<Type> stack = new Stack<Type>();
+		//System.out.println("In getParams()");
+		
+		for (SymbolLink link = firstLink; link != null; link = link.link) {
+			//System.out.println("**Location: " +((OffsetSymbol)link.sym).location +"**");
+			//System.out.println("**Name: " +((OffsetSymbol)link.sym).name +"**");
+			if (((OffsetSymbol)link.sym).location >= 8) {
+				stack.push( ((OffsetSymbol)link.sym).type );
+				//System.out.println("****Pushing Symbol " +((OffsetSymbol)link.sym).name + "****");
+			}
+		}
+		return stack;
+	}
+	
 }
