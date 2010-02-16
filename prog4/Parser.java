@@ -160,7 +160,11 @@ public class Parser {
 		if (! lex.match(":"))
 			parseError(19);
 		lex.nextLex();
-		sym.enterIdentifier(name, type(sym));
+		Type t = type(sym);
+		sym.enterIdentifier(name, t);
+		if (sym instanceof GlobalSymbolTable)
+			CodeGen.genGlobal(name, t.size());
+		
 		stop("nameDeclaration");
 		}
 
@@ -351,16 +355,18 @@ public class Parser {
 
 	private void returnStatement (SymbolTable sym) throws ParseException {
 		start("returnStatement");
+		Ast result = null;
 		if (! lex.match("return"))
 			parseError(12);
 		lex.nextLex();
 		if (lex.match("(")) {
 			lex.nextLex();
-			expression(sym);
+			result = expression(sym);
 			if (! lex.match(")"))
 				parseError(22);
 			lex.nextLex();
 			}
+		CodeGen.genReturn(result);
 		stop("returnStatement");
 		}
 
@@ -373,16 +379,29 @@ public class Parser {
 			throw new ParseException(21);
 		else
 			lex.nextLex();
-		expression(sym);
+		Ast result = expression(sym);
+		if(! result.type.equals(PrimitiveType.BooleanType))
+			parseError(43);
+		Label label1 = new Label();
+		result.branchIfFalse(label1);
+				
 		if (! lex.match(")"))
 			throw new ParseException(22);
 		else
 			lex.nextLex();
 		statement(sym);
+		
+		
 		if (lex.match("else")) {
+			Label label2 = new Label();
+			label2.genBranch();
+			label1.genCode();
 			lex.nextLex();
 			statement(sym);
+			label2.genCode(); //generate the target?
 			}
+		else
+			label1.genCode();		
 		stop("ifStatement");
 		}
 
