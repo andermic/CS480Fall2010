@@ -21,7 +21,7 @@ public class Parser {
 		sym.enterFunction("printReal", new FunctionType(PrimitiveType.VoidType));
 		sym.enterFunction("printStr", new FunctionType(PrimitiveType.VoidType));
 		program(sym);
-		if (lex.tokenCategory() != lex.endOfInput)
+		if (lex.tokenCategory() != Lexer.endOfInput)
 			parseError(3); // expecting end of file
 		}
 
@@ -103,11 +103,11 @@ public class Parser {
 				parseError(20);
 			lex.nextLex();
 			Ast value = null;
-			if (lex.tokenCategory() == lex.intToken)
+			if (lex.tokenCategory() == Lexer.intToken)
 				value = new IntegerNode(new Integer(lex.tokenText()));
-			else if (lex.tokenCategory() == lex.realToken)
+			else if (lex.tokenCategory() == Lexer.realToken)
 				value = new RealNode(new Double(lex.tokenText()));
-			else if (lex.tokenCategory() == lex.stringToken)
+			else if (lex.tokenCategory() == Lexer.stringToken)
 				value = new StringNode(lex.tokenText());
 			else
 				parseError(31);
@@ -271,14 +271,14 @@ public class Parser {
 			}
 		else if (lex.match("[")) {
 			lex.nextLex();
-			if (lex.tokenCategory() != lex.intToken)
+			if (lex.tokenCategory() != Lexer.intToken)
 				parseError(32);
 			int lower = (new Integer(lex.tokenText())).intValue();
 			lex.nextLex();
 			if (! lex.match(":"))
 				parseError(19);
 			lex.nextLex();
-			if (lex.tokenCategory() != lex.intToken)
+			if (lex.tokenCategory() != Lexer.intToken)
 				parseError(32);
 			int upper = (new Integer(lex.tokenText())).intValue();
 			lex.nextLex();
@@ -346,9 +346,9 @@ public class Parser {
 			return true;
 		if (lex.isIdentifier())
 			return true;
-		if ((lex.tokenCategory() == lex.intToken) ||
-			(lex.tokenCategory() == lex.realToken) ||
-			(lex.tokenCategory() == lex.stringToken))
+		if ((lex.tokenCategory() == Lexer.intToken) ||
+			(lex.tokenCategory() == Lexer.realToken) ||
+			(lex.tokenCategory() == Lexer.stringToken))
 			return true;
 		return false;
 		}
@@ -435,6 +435,9 @@ public class Parser {
 	private void assignOrFunction (SymbolTable sym) throws ParseException {
 		start("assignOrFunction");
 		Ast result = reference(sym);
+		String refName = new String();
+		if( result instanceof GlobalNode )
+			refName = ((GlobalNode) result).name;			
 		//val.genCode();
 		if (lex.match("=")) {
 			lex.nextLex();
@@ -450,7 +453,7 @@ public class Parser {
 			if ( ! (result.type instanceof FunctionType) )
 				parseError(45);
 			lex.nextLex();
-			Vector params = parameterList(sym);
+			Vector params = parameterList(sym, refName);
 			if (! lex.match(")"))
 				parseError(22);
 			lex.nextLex();
@@ -462,25 +465,46 @@ public class Parser {
 		stop("assignOrFunction");
 		}
 
-	private Vector parameterList (SymbolTable sym) throws ParseException {  //TODO
+	private Vector<Ast> parameterList (SymbolTable sym, String refName) throws ParseException {  //TODO
 		start("parameterList");
-		//Stack<Type> paramTypes = ((FunctionSymbolTable)sym).getParams();
 		Ast tree = null;
-		Vector result = new Vector();
-		//System.out.println(lex.tokenText());
+		Vector<Ast> result = new Vector<Ast>();
+		Stack<Type> paramTypes = new Stack<Type>();
+		if(refName.equals("printStr"))  //One of the pre-defined print functions
+			paramTypes.push(new AddressType(new StringType("")));
+		else if(refName.equals("printInt"))   
+			paramTypes.push(new AddressType(PrimitiveType.IntegerType));
+		else if(refName.equals("printReal"))  
+			paramTypes.push(new AddressType(PrimitiveType.RealType));	
+		else { //Not a print function, need to check that called params match declared params
+			FunctionSymbolTable funcSym = null;
+			GlobalSymbolTable globSym = null; 
+			if( sym instanceof GlobalSymbolTable)
+				globSym = (GlobalSymbolTable) sym;
+			else
+				globSym = (GlobalSymbolTable) ((FunctionSymbolTable) sym).surrounding;
+			FunctionType refType = (FunctionType) ((GlobalSymbol) globSym.findSymbol(refName)).type;
+			//System.out.println("****Node name & type: " + refName + ", " + refType.toString() + "****");
+			funcSym = (FunctionSymbolTable) refType.symbolTable;
+			paramTypes = funcSym.getParams();
+			//System.out.println(lex.tokenText());
+		}
 		if (firstExpression()) {
 			tree = expression(sym);
-			//if(! tree.type.equals( paramTypes.pop() ))
-				//parseError(44);
+			//System.out.println("****Expected param type: " + blah.toString());
+			//System.out.println("****Actual type: " + tree.type.toString());			
+			
+			if(! tree.type.equals( ((AddressType)paramTypes.pop()).baseType ))
+				parseError(44);
 			result.addElement(tree);
 			while (lex.match(",")) {
 				lex.nextLex();
 				tree = expression(sym);
-				//if(! tree.type.equals( paramTypes.pop() ))
-					//parseError(44);
+				if(! tree.type.equals( ((AddressType)paramTypes.pop()).baseType ))
+					parseError(44);
 				result.addElement(tree);
-				}
 			}
+		}
 		stop("parameterList");
 		return result;
 		}
@@ -670,12 +694,15 @@ public class Parser {
 		}
 		else if (lex.isIdentifier()) {
 			result = reference(sym);
+			String refName = new String();
+			if( result instanceof GlobalNode )
+				refName = ((GlobalNode) result).name;			
 			//result.genCode();
 			if (lex.match("(")) {
 				if(! (result.type instanceof FunctionType) )
 					parseError(45);
 				lex.nextLex();
-				Vector params = parameterList(sym);
+				Vector params = parameterList(sym, refName);
 				if (! lex.match(")"))
 					parseError(22);
 				lex.nextLex();

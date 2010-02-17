@@ -15,6 +15,8 @@ interface SymbolTable {
 	public Type lookupType (String name) throws ParseException;
 	public Ast lookupName (Ast base, String name) throws ParseException;
 	public int size ();
+	public Symbol findSymbol (String name);
+
 }
 
 class GlobalSymbolTable implements SymbolTable {
@@ -41,7 +43,7 @@ class GlobalSymbolTable implements SymbolTable {
 		firstLink = new SymbolLink(s, firstLink);
 	}
 
-	private Symbol findSymbol (String name) {
+	public Symbol findSymbol (String name) {
 		for (SymbolLink l = firstLink; l != null; l = l.link)
 			if (l.sym.name.equals(name))
 				return l.sym;
@@ -111,7 +113,7 @@ class ClassSymbolTable implements SymbolTable {
 		firstLink = new SymbolLink(s, firstLink);
 	}
 
-	private Symbol findSymbol (String name) {
+	public Symbol findSymbol (String name) {
 		for (SymbolLink l = firstLink; l != null; l = l.link)
 			if (l.sym.name.equals(name))
 				return l.sym;
@@ -198,7 +200,7 @@ class FunctionSymbolTable implements SymbolTable {
 		firstLink = new SymbolLink(s, firstLink);
 	}
 
-	private Symbol findSymbol (String name) {
+	public Symbol findSymbol (String name) {
 		for (SymbolLink l = firstLink; l != null; l = l.link)
 			if (l.sym.name.equals(name))
 				return l.sym;
@@ -249,7 +251,7 @@ class FunctionSymbolTable implements SymbolTable {
 			//System.out.println("**Name: " +((OffsetSymbol)link.sym).name +"**");
 			if (((OffsetSymbol)link.sym).location >= 8) {
 				stack.push( ((OffsetSymbol)link.sym).type );
-				//System.out.println("****Pushing Symbol " +((OffsetSymbol)link.sym).name + "****");
+				//System.out.println("****Pushing Symbol " + ((OffsetSymbol)link.sym).name + "****");
 			}
 		}
 		return stack;
