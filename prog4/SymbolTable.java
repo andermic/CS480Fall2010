@@ -1,5 +1,11 @@
 //
 //	written by Tim Budd
+//		modified by:
+//			Mike Anderson
+//			Rob Mcguire-Dale
+//			Sam Heinith
+//
+//		Feb. 17, 2010
 //
 import java.util.*;
 

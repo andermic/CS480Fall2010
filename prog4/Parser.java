@@ -4,7 +4,11 @@ import java.util.*;
 //	parser skeleton, CS 480/580, Winter 1998
 //	written by Tim Budd
 //		modified by:
+//			Mike Anderson
+//			Rob Mcguire-Dale
+//			Sam Heinith
 //
+//		Feb. 17, 2010
 
 public class Parser {
 	private Lexer lex;
@@ -491,20 +495,35 @@ public class Parser {
 		}
 		if (firstExpression()) {
 			tree = expression(sym);
-			//System.out.println("****Expected param type: " + blah.toString());
+			Type expectedType = null;
+			try {
+				expectedType = ((AddressType)paramTypes.pop()).baseType;
+			} catch(EmptyStackException e) {
+				throw new ParseException(47,"too many arguments in function call");
+			}
+			
+			//System.out.println("****Expected param type: " + expectedType.toString());
 			//System.out.println("****Actual type: " + tree.type.toString());			
 			
-			if(! tree.type.equals( ((AddressType)paramTypes.pop()).baseType ))
+			if(! (tree.type.equals( expectedType )))
 				parseError(44);
 			result.addElement(tree);
 			while (lex.match(",")) {
 				lex.nextLex();
 				tree = expression(sym);
-				if(! tree.type.equals( ((AddressType)paramTypes.pop()).baseType ))
+				try {
+					expectedType = ((AddressType)paramTypes.pop()).baseType;
+				} catch(EmptyStackException e) {
+					throw new ParseException(47,"too many arguments in function call");
+				}				
+				if(! (tree.type.equals( expectedType)))
 					parseError(44);
 				result.addElement(tree);
 			}
 		}
+		if(! (paramTypes.isEmpty())) {
+			throw new ParseException(47,"too few arguments in function call");  //Check to make sure that all params in the stack get used
+		}		
 		stop("parameterList");
 		return result;
 		}
