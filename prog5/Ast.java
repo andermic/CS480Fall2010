@@ -197,20 +197,74 @@ class BinaryNode extends Ast {
 		
 		if(node.NodeType == (BinaryNode.plus)){
 			if( node.LeftChild.isIntegerConst() && (! node.RightChild.isIntegerConst()) ) {
-				
-				
-			}			
-				
-			if( (node.RightChild.isIntegerConst()) && ((IntegerNode)node.RightChild).val == 0 )
+				Ast temp = node.LeftChild;
+				node.LeftChild = node.RightChild;
+				node.RightChild = temp;				
+			}				
+			if( (node.RightChild.isIntegerConst()) && ((IntegerNode)node.RightChild).val == 0 ) {
 				return node.LeftChild;
+			}	
 			else if( node.LeftChild.isIntegerConst() && node.RightChild.isIntegerConst() ) {
 				int sum = node.LeftChild.getConstValue() + node.RightChild.getConstValue();
 				return new IntegerNode(sum);
 			}
-			
+			//(t + c) + c -> (t + c2)
+			else if (node.LeftChild instanceof BinaryNode && ((BinaryNode)node.LeftChild).NodeType == BinaryNode.plus
+					  && ((BinaryNode)node.LeftChild).RightChild.isIntegerConst() && node.RightChild.isIntegerConst()) {
+				int sum = ((BinaryNode)node.LeftChild).RightChild.getConstValue() + node.RightChild.getConstValue();
 				
-				
+				((IntegerNode)node.RightChild).val = sum;
+				node.LeftChild = ((BinaryNode)node.LeftChild).LeftChild;
+			}
+			//(t + c) + t2 -> (t + t2) + c
+			else if (node.LeftChild instanceof BinaryNode && ((BinaryNode)node.LeftChild).NodeType == BinaryNode.plus
+					  && ((BinaryNode)node.LeftChild).RightChild.isIntegerConst() && (! node.RightChild.isIntegerConst())) {
+				Ast temp = node.RightChild;	
+				node.RightChild = ((BinaryNode)node.LeftChild).RightChild;
+				((BinaryNode)node.LeftChild).RightChild = temp;
+			}
+			//t + (t2 + c) -> (t + t2) + c
+			else if (node.RightChild instanceof BinaryNode && ((BinaryNode)node.RightChild).NodeType == BinaryNode.plus
+					  && ((BinaryNode)node.RightChild).RightChild.isIntegerConst() 
+					  && (! ((BinaryNode)node.RightChild).LeftChild.isIntegerConst())) {
+
+				Ast cons = ((BinaryNode)node.RightChild).RightChild;
+				((BinaryNode)node.RightChild).RightChild = node.LeftChild;
+				node.LeftChild = node.RightChild;
+				node.RightChild = cons;
+			}
 		}
+		//t - c -> (t + -c)
+		if(node.NodeType == (BinaryNode.minus)){
+			if( (! node.LeftChild.isIntegerConst()) && node.RightChild.isIntegerConst()) {
+				((IntegerNode)node.RightChild).val = (-1)*((IntegerNode)node.RightChild).val;
+				node.NodeType = BinaryNode.plus;
+			}		
+		}
+		if(node.NodeType == (BinaryNode.times)) {
+			//t * 0 -> 0
+			if( node.RightChild.isIntegerConst() && node.RightChild.getConstValue() == 0) {
+				return new IntegerNode(0);
+			}
+			//t * 1 -> t
+			if( node.RightChild.isIntegerConst() && node.RightChild.getConstValue() == 1) {
+				return node.LeftChild;
+			}
+			//c*c -> c2
+			if( node.LeftChild.isIntegerConst() && node.RightChild.isIntegerConst() ) {
+				int product = node.LeftChild.getConstValue() * node.RightChild.getConstValue();
+				return new IntegerNode(product); //bananas
+			}
+			//(t + c1) * c2 -> (t * c2) + (c1 * c2)
+			if( node.LeftChild instanceof BinaryNode && ((BinaryNode)node.LeftChild).NodeType == BinaryNode.plus
+				  && node.RightChild.isIntegerConst() ) {
+				int product = ((BinaryNode)node.LeftChild).RightChild.getConstValue() * node.RightChild.getConstValue();
+				((BinaryNode)node.LeftChild).RightChild = node.RightChild;
+				((BinaryNode)node.LeftChild).NodeType = BinaryNode.times;
+				node.NodeType = BinaryNode.plus;
+				((IntegerNode)node.RightChild).val = product;				
+			}			
+		}	
 		
 		return node;
 	}
@@ -268,6 +322,17 @@ class FunctionCallNode extends Ast {
 		fun = f;
 		args = a;
 		}
+	
+	public FunctionCallNode optimize () {
+		FunctionCallNode node = this;
+		
+		for(Object child : node.args) {
+			child = ((Ast)child).optimize();
+		}		
+		
+		return node;
+	}
+	
 
 	public String toString() { return "Function Call Node"; }
 

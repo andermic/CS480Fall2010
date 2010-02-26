@@ -363,7 +363,7 @@ public class Parser {
 				parseError(22);
 			lex.nextLex();
 			}
-		CodeGen.genReturn(result);
+		CodeGen.genReturn(result.optimize());
 		stop("returnStatement");
 		}
 
@@ -387,7 +387,7 @@ public class Parser {
 			throw new ParseException(13); */
 		mustBeBoolean(test);
 		Label lab1 = new Label();
-		test.branchIfFalse(lab1);
+		test.optimize().branchIfFalse(lab1);
 		statement(sym);
 		if (lex.match("else")) {
 			lex.nextLex();
@@ -424,7 +424,7 @@ public class Parser {
 		Label lab1 = new Label();
 		Label lab2 = new Label();
 		lab1.genCode();
-		test.branchIfFalse(lab2);
+		test.optimize().branchIfFalse(lab2);
 		statement(sym);
 		lab1.genBranch();
 		lab2.genCode();
@@ -440,7 +440,7 @@ public class Parser {
 			Type lt = addressBaseType(val.type);
 			if (! lt.equals(right.type))
 				parseError(44);
-			CodeGen.genAssign(val, right);
+			CodeGen.genAssign(val.optimize(), right.optimize());
 			}
 		else if (lex.match("(")) {
 			if (! (val.type instanceof FunctionType))
@@ -451,7 +451,7 @@ public class Parser {
 				parseError(22);
 			lex.nextLex();
 			val = new FunctionCallNode(val, args);
-			val.genCode();
+			val.optimize().genCode();
 			}
 		else
 			parseError(20);
