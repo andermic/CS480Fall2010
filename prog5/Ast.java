@@ -6,7 +6,33 @@ import java.util.Vector;
 
 abstract class Ast {
 	public Ast(Type t) { type = t; }
+	
+	public Ast optimize() {
+		return this;
+	}
 
+	protected boolean isIntegerConst() {
+		Ast tree = this;
+		if(tree instanceof IntegerNode)
+			return true;
+		else
+			return false;	
+	}
+	
+	protected int getConstValue() {
+		Ast tree = this;
+		try {
+			if( ! (tree.isIntegerConst()))
+				throw new ParseException(32);
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}			
+		return ((IntegerNode)tree).val;
+	}
+	
+	//TODO third "Major Hint" function
+	
+	
 	public Type type;
 
 	abstract public void genCode ();
@@ -47,7 +73,7 @@ class IntegerNode extends Ast {
 	public void genCode() {
 		System.out.println("Integer " + val);
 		}
-}
+}	
 
 class RealNode extends Ast {
 	private double val;
@@ -101,6 +127,21 @@ class UnaryNode extends Ast {
 		child = b;
 	}
 
+	public Ast optimize() {
+		UnaryNode node = this;		
+		node.child = node.child.optimize();
+		
+		if(node.nodeType == UnaryNode.negation) {
+			if(node.child.type.equals(PrimitiveType.IntegerType)) {
+				((IntegerNode)(node.child)).val =  (((IntegerNode)(node.child)).val)*(-1);
+				return node.child;
+			}
+		}
+		return node;		
+	}
+	
+	
+	
 	public int nodeType;
 	public Ast child;
 
@@ -146,7 +187,35 @@ class BinaryNode extends Ast {
 		LeftChild = l;
 		RightChild = r;
 		}
-
+	
+	public Ast optimize () {
+		BinaryNode node = this;
+		
+		node.LeftChild = node.LeftChild.optimize();
+		node.RightChild = node.RightChild.optimize();
+		
+		
+		if(node.NodeType == (BinaryNode.plus)){
+			if( node.LeftChild.isIntegerConst() && (! node.RightChild.isIntegerConst()) ) {
+				
+				
+			}			
+				
+			if( (node.RightChild.isIntegerConst()) && ((IntegerNode)node.RightChild).val == 0 )
+				return node.LeftChild;
+			else if( node.LeftChild.isIntegerConst() && node.RightChild.isIntegerConst() ) {
+				int sum = node.LeftChild.getConstValue() + node.RightChild.getConstValue();
+				return new IntegerNode(sum);
+			}
+			
+				
+				
+		}
+		
+		return node;
+	}
+	
+	
 	public String toString() { return "Binary Node " + NodeType +
 		"(" + LeftChild + "," + RightChild + ")" + type; }
 
