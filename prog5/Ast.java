@@ -217,6 +217,7 @@ class BinaryNode extends Ast {
 				int sum = ((BinaryNode)node.LeftChild).RightChild.getConstValue() + node.RightChild.getConstValue();
 				
 				((IntegerNode)node.RightChild).val = sum;
+				
 				node.LeftChild = ((BinaryNode)node.LeftChild).LeftChild;
 			}
 			//(t + c) + t2 -> (t + t2) + c
@@ -225,24 +226,39 @@ class BinaryNode extends Ast {
 				Ast temp = node.RightChild;	
 				node.RightChild = ((BinaryNode)node.LeftChild).RightChild;
 				((BinaryNode)node.LeftChild).RightChild = temp;
+				node.LeftChild.type = node.type;
+				node = (BinaryNode) node.optimize();
 			}
 			//t + (t2 + c) -> (t + t2) + c
-			else if (node.RightChild instanceof BinaryNode && ((BinaryNode)node.RightChild).NodeType == BinaryNode.plus
-					  && ((BinaryNode)node.RightChild).RightChild.isIntegerConst() 
-					  && (! ((BinaryNode)node.RightChild).LeftChild.isIntegerConst())) {
+			else if (node.RightChild instanceof BinaryNode
+					  && ((BinaryNode)node.RightChild).NodeType == BinaryNode.plus
+					  && ((BinaryNode)node.RightChild).RightChild.isIntegerConst() ) {
 			
 				Ast cons = ((BinaryNode)node.RightChild).RightChild;  //Save const
 				((BinaryNode)node.RightChild).RightChild = ((BinaryNode)node.RightChild).LeftChild; //Replace const with b
 				((BinaryNode)node.RightChild).LeftChild = node.LeftChild;  //Replace b with a
 				node.LeftChild = node.RightChild; //Replace a with (a + b)
 				node.RightChild = cons;
+				node.NodeType = ((BinaryNode) node.LeftChild).NodeType;
+				
+				node.LeftChild.type = node.type;
+//				BinaryNode leftChild = new BinaryNode (BinaryNode.plus, node.LeftChild.type, node.LeftChild, ((BinaryNode)node.RightChild).LeftChild);
+//				BinaryNode newNode = new BinaryNode(BinaryNode.plus, node.type, leftChild, ((BinaryNode)node.RightChild).RightChild);
+				
+//				System.out.println("#### Type of rightChild "+node.RightChild.type.toString() +" ####");
+//				System.out.println("#### Type of leftChild "+node.LeftChild.type.toString() +" ####");
+//				System.out.println("#### Type of node "+node.type.toString() +" ####");				
+				node = (BinaryNode) node.optimize();
+//				System.out.println("#### Type of leftChild "+leftChild.type.toString() +" ####");
+//				System.out.println("#### Type of node "+node.type.toString() +" ####");
 			}
 		}
 		//t - c -> (t + -c)
 		if(node.NodeType == (BinaryNode.minus)){
-			if( (! node.LeftChild.isIntegerConst()) && node.RightChild.isIntegerConst()) {
+			if( node.RightChild.isIntegerConst() ) {
 				((IntegerNode)node.RightChild).val = (-1)*((IntegerNode)node.RightChild).val;
 				node.NodeType = BinaryNode.plus;
+				return node.optimize();  //For further optimizations, ie c - c -> c + -c -> c2 
 			}		
 		}
 		if(node.NodeType == (BinaryNode.times)) {
@@ -267,7 +283,13 @@ class BinaryNode extends Ast {
 				((BinaryNode)node.LeftChild).NodeType = BinaryNode.times;   //Change the type of the left child
 				node.NodeType = BinaryNode.plus;							//Change the type of the node
 				((IntegerNode)node.RightChild).val = product;				//Change right child to be the value of the product
+//				Type temp = node.LeftChild.type;
+//				node.LeftChild.type = node.type;
+//				node.type = temp;
 				node = (BinaryNode) node.optimize();						//Take advantage of any optimization opportunities created by distribution
+//				System.out.println("#### Type of rightChild (dist) "+node.RightChild.type.toString() +" ####");
+//				System.out.println("#### Type of leftChild (dist) "+node.LeftChild.type.toString() +" ####");
+//				System.out.println("#### Type of node (dist) "+node.type.toString() +" ####");
 			}			
 		}	
 		
