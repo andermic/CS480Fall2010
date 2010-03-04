@@ -1,6 +1,13 @@
 //
 //	abstract syntax tree
 //
+//		modified by:
+//                  Mike Anderson
+//                  Rob Mcguire-Dale
+//                  Sam Heinith
+//
+//              March 3, 2010
+
 
 import java.util.Vector;
 
@@ -204,6 +211,7 @@ class BinaryNode extends Ast {
 			}
 			//t + 0 -> t
 			if( (node.RightChild.isIntegerConst()) && ((IntegerNode)node.RightChild).val == 0 ) {
+				node.LeftChild.type = node.type;
 				return node.LeftChild;
 			}
 			//c + c -> c2
@@ -242,15 +250,7 @@ class BinaryNode extends Ast {
 				node.NodeType = ((BinaryNode) node.LeftChild).NodeType;
 				
 				node.LeftChild.type = node.type;
-//				BinaryNode leftChild = new BinaryNode (BinaryNode.plus, node.LeftChild.type, node.LeftChild, ((BinaryNode)node.RightChild).LeftChild);
-//				BinaryNode newNode = new BinaryNode(BinaryNode.plus, node.type, leftChild, ((BinaryNode)node.RightChild).RightChild);
-				
-//				System.out.println("#### Type of rightChild "+node.RightChild.type.toString() +" ####");
-//				System.out.println("#### Type of leftChild "+node.LeftChild.type.toString() +" ####");
-//				System.out.println("#### Type of node "+node.type.toString() +" ####");				
 				node = (BinaryNode) node.optimize();
-//				System.out.println("#### Type of leftChild "+leftChild.type.toString() +" ####");
-//				System.out.println("#### Type of node "+node.type.toString() +" ####");
 			}
 		}
 		//t - c -> (t + -c)
@@ -268,6 +268,7 @@ class BinaryNode extends Ast {
 			}
 			//t * 1 -> t
 			if( node.RightChild.isIntegerConst() && node.RightChild.getConstValue() == 1) {
+				node.LeftChild.type = PrimitiveType.IntegerType;
 				return node.LeftChild;
 			}
 			//c*c -> c2
@@ -283,13 +284,8 @@ class BinaryNode extends Ast {
 				((BinaryNode)node.LeftChild).NodeType = BinaryNode.times;   //Change the type of the left child
 				node.NodeType = BinaryNode.plus;							//Change the type of the node
 				((IntegerNode)node.RightChild).val = product;				//Change right child to be the value of the product
-//				Type temp = node.LeftChild.type;
-//				node.LeftChild.type = node.type;
-//				node.type = temp;
+
 				node = (BinaryNode) node.optimize();						//Take advantage of any optimization opportunities created by distribution
-//				System.out.println("#### Type of rightChild (dist) "+node.RightChild.type.toString() +" ####");
-//				System.out.println("#### Type of leftChild (dist) "+node.LeftChild.type.toString() +" ####");
-//				System.out.println("#### Type of node (dist) "+node.type.toString() +" ####");
 			}			
 		}	
 		
