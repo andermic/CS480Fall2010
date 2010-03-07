@@ -20,7 +20,13 @@ class CodeGen {
 
 	static void genProlog (String name, int size) {
 		// put your code here
-		System.out.println("replace me with your code");
+		gen(".globl", name);
+		gen(".type", name, "@function");
+		System.out.println(name + ':');
+		gen("pushl", "%ebp");
+		gen("movl",	"%esp", "%ebp");
+		if(size != 0)
+			gen("subl",	String.valueOf(size), "%esp");
 		// end of your code
 		endLabel = new Label();
 		constantTable = new Vector();
@@ -50,19 +56,61 @@ class CodeGen {
 
 	static void genGlobal (String name, int size) {
 		// put your code here
-		System.out.println("replace me with your code");
+		gen(".comm", name, String.valueOf(size));
 		}
 
 	static void genAssign (Ast left, Ast right) {
 		// put your code here
-		System.out.println("replace me with your code");
+		if((left instanceof BinaryNode) && (((BinaryNode)left).isSum() != null) &&
+		 (((BinaryNode)left).LeftChild instanceof FramePointer) &&
+		 (((BinaryNode)left).RightChild.isConstant()) ) {
+			right.genCode();
+			if(((BinaryNode)left).RightChild instanceof RealNode) {
+				String constString = String.valueOf(((RealNode)((BinaryNode)left).RightChild).val);
+				gen("flds",	"0(%esp)");
+				gen("addl",	"$4,%esp");
+				gen("fstps", constString + "(%ebp)");
+			}
+			else {
+				String constString = String.valueOf(((IntegerNode)((BinaryNode)left).RightChild).val);
+				gen("popl", constString + "(%ebp)");
+			}
+		}
+		else if(left instanceof GlobalNode) {
+			right.genCode();
+			gen("popl",	"%eax");
+			gen("movl",	"%eax", ((GlobalNode)left).name);
+		}
+		else {
+			left.genCode();
+			right.genCode();
+			if(left instanceof RealNode) {
+				gen("flds",	"0(%esp)");
+				gen("addl", "$4", "%esp");
+				gen("popl",	"%ecx");
+				gen("fstps", "0(%ecx)");
+			}
+			else {
+				gen("popl", "%eax");
+				gen("popl", "%ecx");
+				gen("movl",	"%eax", "0(%ecx)");				
+			}
+		}
 	}
 
 	static void genReturn (Ast e) {
 		// put your code here
 		if (e != null) {
 			e.genCode();
-			System.out.println("replace me with your code");
+			if( e.type.equals(PrimitiveType.RealType)) {
+				gen("flds", "0(%esp)");
+				gen("addl", "$4", "%esp");
+				//gen("jmp", endLabel.toString());
+			}
+			else {
+				gen("popl", "%eax");
+				//gen("jmp", endLabel.toString());
+			}
 		}
 		endLabel.genBranch();
 	}

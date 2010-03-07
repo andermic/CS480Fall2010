@@ -9,7 +9,37 @@ abstract class Ast {
 
 	public Type type;
 
-	abstract public void genCode ();
+    protected boolean isConstant() {
+        Ast tree = this;
+        if((tree instanceof IntegerNode) || (tree instanceof RealNode))
+                return true;
+        else
+                return false;   
+    }
+	
+    protected int getIntValue() {
+        Ast tree = this;
+        try {
+                if( ! (tree.isConstant()))
+                        throw new ParseException(32);
+        } catch (ParseException e) {
+                e.printStackTrace();
+        }                       
+        return ((IntegerNode)tree).val;
+    }
+    
+    protected double getRealValue() {
+        Ast tree = this;
+        try {
+                if( ! (tree.isConstant()))
+                        throw new ParseException(32);
+        } catch (ParseException e) {
+                e.printStackTrace();
+        }                       
+        return ((RealNode)tree).val;
+    }
+
+    abstract public void genCode ();
 
 	public Ast optimize () { return this; }
 
@@ -62,7 +92,7 @@ class IntegerNode extends Ast {
 }
 
 class RealNode extends Ast {
-	private double val;
+	public double val;
 
 	public RealNode (double v) 
 		{ super(PrimitiveType.RealType); val = v; }
@@ -93,8 +123,8 @@ class FramePointer extends Ast {
 	public FramePointer () { super(PrimitiveType.VoidType); }
 
 	public void genCode () {
-		System.out.println("frame pointer");
-		}
+		CodeGen.gen("pushl", "%ebp");
+	}
 
 	public String toString() { return "frame pointer"; }
 }
@@ -130,15 +160,42 @@ class UnaryNode extends Ast {
 		child.genCode();
 		switch(nodeType) {
 			case dereference:
-				System.out.println("dereference " + type); break;
+				if((child instanceof BinaryNode) && (((BinaryNode)child).isSum() != null) &&
+				 (((BinaryNode)child).LeftChild instanceof FramePointer) &&
+				 (((BinaryNode)child).RightChild.isConstant()) ) {
+					String offset = String.valueOf(((IntegerNode)((BinaryNode)child).RightChild).val);
+					CodeGen.gen("pushl", offset + "(%ebp)");
+				}
+				else if(child instanceof GlobalNode) {
+					CodeGen.gen("pushl", ((GlobalNode)child).name);
+				}
+				else {
+					CodeGen.gen("popl",	"%eax");
+					CodeGen.gen("pushl", "0(%eax)");
+				}
+				break;
 			case convertToReal:
-				System.out.println("convert to real" + type); break;
-			case notOp:
-				System.out.println("not op " + type); break;
+				CodeGen.gen("fildl", "0(%esp)");
+				CodeGen.gen("fstps", "0(%esp)");
+				break;
+			case notOp: //TODO
+				System.out.println("not op " + type);
+				break;
 			case negation:
-				System.out.println("numeric negation " + type); break;
+				if(child instanceof RealNode) {
+					CodeGen.gen("flds", "0(%esp)");
+					CodeGen.gen("fchs");	
+					CodeGen.gen("fstps", "0(%esp)");
+				}
+				else if(child instanceof IntegerNode) {
+					CodeGen.gen("negl", "0(%esp)");
+				}
+				break;
 			case newOp:
-				System.out.println("new memory " + type); break;
+				CodeGen.gen("call", "malloc");
+				CodeGen.gen("addl", "$4", "%esp");
+				CodeGen.gen("pushl", "%eax");
+				break;
 		}
 	}
 }
