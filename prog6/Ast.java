@@ -68,8 +68,8 @@ class GlobalNode extends Ast {
 	public String toString() { return "global node " + name; }
 
 	public void genCode() {
-		System.out.println("Global " + name + " " + type);
-		}
+		CodeGen.gen("pushl", "$" + name);
+	}
 }
 
 class IntegerNode extends Ast {
@@ -83,8 +83,8 @@ class IntegerNode extends Ast {
 	public String toString() { return "Integer " + val; }
 
 	public void genCode() {
-		System.out.println("Integer " + val);
-		}
+		CodeGen.gen("pushl", "$" + String.valueOf(val));
+	}
 
 	public boolean isInteger() { return true; }
 
@@ -102,8 +102,12 @@ class RealNode extends Ast {
 	public String toString() { return "real " + val; }
 
 	public void genCode() {
-		System.out.println("Real " + val);
-		}
+		Label lab = new Label();
+		CodeGen.addConstant(lab, new Double(val));
+		CodeGen.gen("flds", lab.toString());
+		CodeGen.gen("subl", "$4", "%esp");
+		CodeGen.gen("fstps", "0(%esp)");
+	}
 }
 
 class StringNode extends Ast {
@@ -115,8 +119,10 @@ class StringNode extends Ast {
 	public String toString() { return "string " + val; }
 
 	public void genCode() {
-		System.out.println("String " + val); 
-		}
+		Label lab = new Label();
+		CodeGen.addConstant(lab, val);
+		CodeGen.gen("pushl", "$" + lab.toString());
+	}
 }
 
 class FramePointer extends Ast {
@@ -317,37 +323,121 @@ class BinaryNode extends Ast {
 	}
 
 	public void genCode () {
-		LeftChild.genCode();
-		RightChild.genCode();
 		switch (NodeType) {
 			case plus: 
-				System.out.println("do addition " + type); break;
+				if(this.type.equals(PrimitiveType.RealType)) {
+					RightChild.genCode();
+					LeftChild.genCode();
+					CodeGen.gen("flds", "0(%esp)");
+					CodeGen.gen("addl", "$4", "%esp");
+					CodeGen.gen("fadds", "0(%esp)");
+					CodeGen.gen("fstps", "0(%esp)");
+				}
+				else if(this.type.equals(PrimitiveType.IntegerType)) {
+					LeftChild.genCode();
+					if(RightChild.type.equals(PrimitiveType.IntegerType)) {
+						CodeGen.gen("addl", "$n", "0(%esp)");
+					}
+					else {
+						RightChild.genCode();
+						CodeGen.gen("popl", "%eax");
+						CodeGen.gen("addl",	"%eax", "0(%esp)");
+					}
+				}
+				break;
 			case minus: 
-				System.out.println("do subtraction " + type); break;
-			case leftShift: 
-				System.out.println("do left shift " + type); break;
+				if(this.type.equals(PrimitiveType.RealType)) {
+					RightChild.genCode();
+					LeftChild.genCode();
+					CodeGen.gen("flds", "0(%esp)");
+					CodeGen.gen("addl",	"$4", "%esp");
+					CodeGen.gen("fsubs", "0(%esp)");
+					CodeGen.gen("fstps", "0(%esp)");
+				}
+				else {
+					LeftChild.genCode();
+					RightChild.genCode();
+					CodeGen.gen("popl", "%eax");
+					CodeGen.gen("subl", "%eax", "0(%esp)");
+				}
+				break;
+			case leftShift:
+				RightChild.genCode();
+				LeftChild.genCode();
+				CodeGen.gen("popl", "%eax");
+				CodeGen.gen("popl", "%ecx");
+				CodeGen.gen("sall", "%cl", "%eax");
+				CodeGen.gen("pushl", "%eax");
+				break;
 			case times: 
-				System.out.println("do multiplication " + type); break;
+				if(this.type.equals(PrimitiveType.RealType)) {
+					RightChild.genCode();
+					LeftChild.genCode();
+					CodeGen.gen("flds", "0(%esp)");
+					CodeGen.gen("addl", "$4", "%esp");
+					CodeGen.gen("fmuls", "0(%esp)");
+					CodeGen.gen("fstps", "0(%esp)");
+				}
+				else {
+					LeftChild.genCode();
+					RightChild.genCode();
+					CodeGen.gen("popl", "%eax");
+					CodeGen.gen("imull", "0(%esp)");
+					CodeGen.gen("movl", "%eax", "0(%esp)");					
+				}
+				break;
 			case divide: 
-				System.out.println("do division " + type); break;
+				if(this.type.equals(PrimitiveType.RealType)) {
+					RightChild.genCode();
+					LeftChild.genCode();
+					CodeGen.gen("flds", "0(%esp)");
+					CodeGen.gen("addl", "$4", "%esp");
+					CodeGen.gen("fdivs", "0(%esp)");
+					CodeGen.gen("fstps", "0(%esp)");
+				}
+				else {
+					RightChild.genCode();
+					LeftChild.genCode();
+					CodeGen.gen("popl", "%eax");
+					CodeGen.gen("popl", "%ecx");
+					CodeGen.gen("cltd");
+					CodeGen.gen("idivl", "%ecx");
+					CodeGen.gen("pushl", "%eax");
+				}
+				break;
 			case remainder:
-				System.out.println("do remainder " + type); break;
-			case and: 
-				System.out.println("do and " + type); break;
-			case or: 
-				System.out.println("do or " + type); break;
-			case less: 
-				System.out.println("compare less " + type); break;
-			case lessEqual: 
-				System.out.println("compare less or equal" + type); break;
-			case equal: 
-				System.out.println("compare equal " + type); break;
-			case notEqual: 
-				System.out.println("compare notEqual " + type); break;
-			case greater: 
-				System.out.println("compare greater " + type); break;
-			case greaterEqual: 
-				System.out.println("compare greaterEqual " + type); break;
+				RightChild.genCode();
+				LeftChild.genCode();
+				CodeGen.gen("popl", "%eax");
+				CodeGen.gen("popl",	"%ecx");
+				CodeGen.gen("cltd");
+				CodeGen.gen("idivl", "%ecx");
+				CodeGen.gen("pushl", "%edx");
+				break;
+			case and: //TODO 
+				System.out.println("do and " + type);
+				break;
+			case or: //TODO
+				System.out.println("do or " + type);
+				break;
+			case less: //TODO
+				System.out.println("compare less " + type);
+				break;
+			case lessEqual: //TODO
+				System.out.println("compare less or equal" + type);
+				break;
+			case equal: //TODO
+				System.out.println("compare equal " + type);
+				break;
+			case notEqual: //TODO
+				System.out.println("compare notEqual " + type);
+				break;
+			case greater: //TODO
+				System.out.println("compare greater " + type);
+				break;
+			case greaterEqual: //TODO
+				System.out.println("compare greaterEqual " + type);
+				break;
 			}
 		}
 
@@ -364,7 +454,7 @@ class FunctionCallNode extends Ast {
 		super (((FunctionType) f.type).returnType);
 		fun = f;
 		args = a;
-		}
+	}
 
 	public String toString() { return "Function Call Node"; }
 
@@ -373,19 +463,25 @@ class FunctionCallNode extends Ast {
 		for (int i = 0; i < args.size(); i++) {
 			Ast arg = (Ast) args.elementAt(i);
 			newArgs.addElement(arg.optimize());
-			}
+		}
 		return new FunctionCallNode(fun, newArgs);
 	}
 
 	public void genCode () {
 		int i = args.size();
+		int totalSize = 0;
 		while (--i >= 0) {
 			Ast arg = (Ast) args.elementAt(i);
 			arg.genCode();
-			System.out.println("push argument " + arg.type);
-			}
+			totalSize += arg.type.size();
+		}
 
 		fun.genCode();
-		System.out.println("function call " + type);
+		CodeGen.gen("call", "name");
+		if(totalSize > 0)
+			CodeGen.gen("addl",	"$" + String.valueOf(totalSize), "%esp");
+		if(true) {
+			//TODO
+		}
 	}
 }
