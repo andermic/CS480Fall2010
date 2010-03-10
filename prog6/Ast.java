@@ -1,6 +1,7 @@
 //
 //	abstract syntax tree
 //
+//Modified by Michael Anderson, Sam Heinith, & Rob McGuire-Dale
 
 import java.util.Vector;
 
@@ -45,12 +46,75 @@ abstract class Ast {
 
 	public void branchIfTrue (Label lab) throws ParseException {
 		genCode();
-		System.out.println("Branch if True " + lab);
+		if(this instanceof UnaryNode) {
+			if(((UnaryNode)this).nodeType == UnaryNode.notOp) {
+				((UnaryNode)this).child.branchIfFalse(lab);
+			}
+			else {
+				lab.genBranch();
+			}
+		}
+		else if(this instanceof BinaryNode) {
+			switch(((BinaryNode)this).NodeType) {
+				case BinaryNode.and:
+					break;
+				case BinaryNode.or:
+					break;
+				case BinaryNode.less:
+					BinaryNode.genComp("jl", lab);
+					break;
+				case BinaryNode.lessEqual:
+					BinaryNode.genComp("jle", lab);
+					break;
+				case BinaryNode.equal:
+					BinaryNode.genComp("je", lab);
+					break;
+				case BinaryNode.notEqual:
+					BinaryNode.genComp("jne", lab);
+					break;
+				case BinaryNode.greater:
+					BinaryNode.genComp("jg", lab);
+					break;
+				case BinaryNode.greaterEqual:
+					BinaryNode.genComp("jge", lab);
+					break;
+			}
+		}
 	}
 
 	public void branchIfFalse (Label lab) throws ParseException { 
 		genCode();
-		System.out.println("Branch if False " + lab);
+		if(this instanceof UnaryNode) {
+			if(((UnaryNode)this).nodeType == UnaryNode.notOp) {
+				((UnaryNode)this).child.branchIfTrue(lab);
+			}
+		}
+		else if(this instanceof BinaryNode) {
+			switch(((BinaryNode)this).NodeType) {
+				case BinaryNode.and:
+					break;
+				case BinaryNode.or:
+					break;
+				case BinaryNode.less:
+					BinaryNode.genComp("jge", lab);
+					break;
+				case BinaryNode.lessEqual:
+					BinaryNode.genComp("jg", lab);
+					break;
+				case BinaryNode.equal:
+					BinaryNode.genComp("jne", lab);
+					break;
+				case BinaryNode.notEqual:
+					BinaryNode.genComp("je", lab);
+					break;
+				case BinaryNode.greater:
+					BinaryNode.genComp("jle", lab);
+					break;
+				case BinaryNode.greaterEqual:
+					BinaryNode.genComp("jl", lab);
+					break;
+			}
+		}
 	}
 
 	public boolean isInteger() { return false; }
@@ -184,8 +248,7 @@ class UnaryNode extends Ast {
 				CodeGen.gen("fildl", "0(%esp)");
 				CodeGen.gen("fstps", "0(%esp)");
 				break;
-			case notOp: //TODO
-				System.out.println("not op " + type);
+			case notOp:
 				break;
 			case negation:
 				if(child instanceof RealNode) {
@@ -335,8 +398,8 @@ class BinaryNode extends Ast {
 				}
 				else if(this.type.equals(PrimitiveType.IntegerType)) {
 					LeftChild.genCode();
-					if(RightChild.type.equals(PrimitiveType.IntegerType)) {
-						CodeGen.gen("addl", "$n", "0(%esp)");
+					if(RightChild.isInteger()) {
+						CodeGen.gen("addl", "$" + RightChild.cValue(), "0(%esp)");
 					}
 					else {
 						RightChild.genCode();
@@ -414,32 +477,26 @@ class BinaryNode extends Ast {
 				CodeGen.gen("idivl", "%ecx");
 				CodeGen.gen("pushl", "%edx");
 				break;
-			case and: //TODO 
-				System.out.println("do and " + type);
-				break;
-			case or: //TODO
-				System.out.println("do or " + type);
-				break;
-			case less: //TODO
-				System.out.println("compare less " + type);
-				break;
-			case lessEqual: //TODO
-				System.out.println("compare less or equal" + type);
-				break;
-			case equal: //TODO
-				System.out.println("compare equal " + type);
-				break;
-			case notEqual: //TODO
-				System.out.println("compare notEqual " + type);
-				break;
-			case greater: //TODO
-				System.out.println("compare greater " + type);
-				break;
-			case greaterEqual: //TODO
-				System.out.println("compare greaterEqual " + type);
+			case and: 
+			case or:
+			case less:
+			case lessEqual:
+			case equal:
+			case notEqual:
+			case greater:
+			case greaterEqual:
+				LeftChild.genCode();
+				RightChild.genCode();
 				break;
 			}
 		}
+	
+	static public void genComp(String operator, Label l) {
+		CodeGen.gen("popl", "%eax");
+		CodeGen.gen("popl", "%ecx");
+		CodeGen.gen("cmpl", "%eax", "%ecx");
+		CodeGen.gen(operator, l.toString() );
+	}
 
 	public int NodeType;
 	public Ast LeftChild;
@@ -476,8 +533,7 @@ class FunctionCallNode extends Ast {
 			totalSize += arg.type.size();
 		}
 
-		fun.genCode();
-		CodeGen.gen("call", "name");
+		CodeGen.gen("call", ((GlobalNode)fun).name);
 		if(totalSize > 0)
 			CodeGen.gen("addl",	"$" + String.valueOf(totalSize), "%esp");
 		if(true) {

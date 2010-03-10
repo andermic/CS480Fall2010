@@ -1,3 +1,5 @@
+// Modified by Michael Anderson, Sam Heinith, & Rob McGuire-Dale
+
 import java.util.Vector;
 
 class CodeGen {
@@ -26,7 +28,7 @@ class CodeGen {
 		gen("pushl", "%ebp");
 		gen("movl",	"%esp", "%ebp");
 		if(size != 0)
-			gen("subl",	String.valueOf(size), "%esp");
+			gen("subl",	"$" + String.valueOf(size), "%esp");
 		// end of your code
 		endLabel = new Label();
 		constantTable = new Vector();
@@ -66,13 +68,13 @@ class CodeGen {
 		 (((BinaryNode)left).RightChild.isConstant()) ) {
 			right.genCode();
 			if(((BinaryNode)left).RightChild instanceof RealNode) {
-				String constString = String.valueOf(((RealNode)((BinaryNode)left).RightChild).val);
+				String constString = String.valueOf(((BinaryNode)left).RightChild.cValue());
 				gen("flds",	"0(%esp)");
 				gen("addl",	"$4,%esp");
 				gen("fstps", constString + "(%ebp)");
 			}
 			else {
-				String constString = String.valueOf(((IntegerNode)((BinaryNode)left).RightChild).val);
+				String constString = String.valueOf(((BinaryNode)left).RightChild.cValue());
 				gen("popl", constString + "(%ebp)");
 			}
 		}
