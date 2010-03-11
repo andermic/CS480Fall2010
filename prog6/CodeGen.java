@@ -67,7 +67,7 @@ class CodeGen {
 		 (((BinaryNode)left).LeftChild instanceof FramePointer) &&
 		 (((BinaryNode)left).RightChild.isConstant()) ) {
 			right.genCode();
-			if(((BinaryNode)left).RightChild instanceof RealNode) {
+			if(right.type.equals(PrimitiveType.RealType)) {
 				String constString = String.valueOf(((BinaryNode)left).RightChild.cValue());
 				gen("flds",	"0(%esp)");
 				gen("addl",	"$4,%esp");

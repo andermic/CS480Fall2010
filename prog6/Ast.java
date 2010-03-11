@@ -251,12 +251,12 @@ class UnaryNode extends Ast {
 			case notOp:
 				break;
 			case negation:
-				if(child instanceof RealNode) {
+				if(child.type.equals(PrimitiveType.RealType)) {
 					CodeGen.gen("flds", "0(%esp)");
 					CodeGen.gen("fchs");	
 					CodeGen.gen("fstps", "0(%esp)");
 				}
-				else if(child instanceof IntegerNode) {
+				else if(child.type.equals(PrimitiveType.IntegerType)) {
 					CodeGen.gen("negl", "0(%esp)");
 				}
 				break;
@@ -536,8 +536,16 @@ class FunctionCallNode extends Ast {
 		CodeGen.gen("call", ((GlobalNode)fun).name);
 		if(totalSize > 0)
 			CodeGen.gen("addl",	"$" + String.valueOf(totalSize), "%esp");
-		if(true) {
-			//TODO
+		Type returnType = ((FunctionType)(this.fun.type)).returnType;
+		if( returnType.size() != 0) {
+			if(returnType.equals(PrimitiveType.RealType)) {
+				CodeGen.gen("subl", "$4", "%esp");
+				CodeGen.gen("fstps", "0(%esp)");
+			}
+			else {
+				CodeGen.gen("pushl", "%eax");
+	
+			}
 		}
 	}
 }
