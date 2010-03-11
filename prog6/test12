@@ -1,0 +1,14 @@
+function gcd (a : int, b : int) : int
+begin
+	if ((not (( ((a > b) and (a < b)) or ((a > b) and (a < b)) )) ))
+		a = a - b
+	else
+		b = b - a;
+	return (a);
+end;
+
+function main ()
+begin
+	printStr("Euclids GCD algorithm");
+end;
+
