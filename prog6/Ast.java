@@ -12,7 +12,7 @@ abstract class Ast {
 
     protected boolean isConstant() {
         Ast tree = this;
-        if((tree instanceof IntegerNode) || (tree instanceof RealNode))
+        if((tree.type.equals(PrimitiveType.IntegerType)) || (tree.type.equals(PrimitiveType.IntegerType)))
                 return true;
         else
                 return false;   
@@ -45,20 +45,28 @@ abstract class Ast {
 	public Ast optimize () { return this; }
 
 	public void branchIfTrue (Label lab) throws ParseException {
-		genCode();
+		if( !(this instanceof BinaryNode) || 
+		  ((((BinaryNode)this).NodeType != BinaryNode.and) &&
+		  (((BinaryNode)this).NodeType != BinaryNode.or)))
+			genCode();
 		if(this instanceof UnaryNode) {
 			if(((UnaryNode)this).nodeType == UnaryNode.notOp) {
 				((UnaryNode)this).child.branchIfFalse(lab);
-			}
-			else {
-				lab.genBranch();
 			}
 		}
 		else if(this instanceof BinaryNode) {
 			switch(((BinaryNode)this).NodeType) {
 				case BinaryNode.and:
+					Label l2 = new Label();
+					((BinaryNode)this).LeftChild.branchIfFalse(l2);
+					((BinaryNode)this).RightChild.branchIfTrue(lab);
+					l2.genCode();
 					break;
 				case BinaryNode.or:
+					Label l3 = new Label();
+					((BinaryNode)this).LeftChild.branchIfTrue(lab);
+					((BinaryNode)this).RightChild.branchIfFalse(l3);
+					l3.genCode();
 					break;
 				case BinaryNode.less:
 					BinaryNode.genComp("jl", lab);
@@ -83,7 +91,10 @@ abstract class Ast {
 	}
 
 	public void branchIfFalse (Label lab) throws ParseException { 
-		genCode();
+		if( !(this instanceof BinaryNode) || 
+		  ((((BinaryNode)this).NodeType != BinaryNode.and) &&
+		  (((BinaryNode)this).NodeType != BinaryNode.or)))
+					genCode();
 		if(this instanceof UnaryNode) {
 			if(((UnaryNode)this).nodeType == UnaryNode.notOp) {
 				((UnaryNode)this).child.branchIfTrue(lab);
@@ -92,8 +103,16 @@ abstract class Ast {
 		else if(this instanceof BinaryNode) {
 			switch(((BinaryNode)this).NodeType) {
 				case BinaryNode.and:
+					Label l4 = new Label();
+					((BinaryNode)this).LeftChild.branchIfFalse(l4);
+					((BinaryNode)this).RightChild.branchIfTrue(lab);
+					l4.genCode();
 					break;
 				case BinaryNode.or:
+					Label l5 = new Label();
+					((BinaryNode)this).LeftChild.branchIfTrue(l5);
+					((BinaryNode)this).RightChild.branchIfFalse(lab);
+					l5.genCode();
 					break;
 				case BinaryNode.less:
 					BinaryNode.genComp("jge", lab);
@@ -227,7 +246,6 @@ class UnaryNode extends Ast {
 		}
 
 	public void genCode () {
-		child.genCode();
 		switch(nodeType) {
 			case dereference:
 				if((child instanceof BinaryNode) && (((BinaryNode)child).isSum() != null) &&
@@ -240,17 +258,20 @@ class UnaryNode extends Ast {
 					CodeGen.gen("pushl", ((GlobalNode)child).name);
 				}
 				else {
+					child.genCode();
 					CodeGen.gen("popl",	"%eax");
 					CodeGen.gen("pushl", "0(%eax)");
 				}
 				break;
 			case convertToReal:
+				child.genCode();
 				CodeGen.gen("fildl", "0(%esp)");
 				CodeGen.gen("fstps", "0(%esp)");
 				break;
 			case notOp:
 				break;
 			case negation:
+				child.genCode();
 				if(child.type.equals(PrimitiveType.RealType)) {
 					CodeGen.gen("flds", "0(%esp)");
 					CodeGen.gen("fchs");	
@@ -261,6 +282,7 @@ class UnaryNode extends Ast {
 				}
 				break;
 			case newOp:
+				child.genCode();
 				CodeGen.gen("call", "malloc");
 				CodeGen.gen("addl", "$4", "%esp");
 				CodeGen.gen("pushl", "%eax");
@@ -396,7 +418,7 @@ class BinaryNode extends Ast {
 					CodeGen.gen("fadds", "0(%esp)");
 					CodeGen.gen("fstps", "0(%esp)");
 				}
-				else if(this.type.equals(PrimitiveType.IntegerType)) {
+				else {
 					LeftChild.genCode();
 					if(RightChild.isInteger()) {
 						CodeGen.gen("addl", "$" + RightChild.cValue(), "0(%esp)");
@@ -408,7 +430,7 @@ class BinaryNode extends Ast {
 					}
 				}
 				break;
-			case minus: 
+			case minus:
 				if(this.type.equals(PrimitiveType.RealType)) {
 					RightChild.genCode();
 					LeftChild.genCode();
